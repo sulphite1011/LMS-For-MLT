@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-navy: #0A1929;
+  --color-navy-light: #132F4C;
+  --color-teal: #14b8a6;
+  --color-teal-dark: #0d9488;
+  --color-teal-light: #5eead4;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-blue: #3b82f6;
+  --color-purple: #8b5cf6;
+  --font-sans: 'Inter', sans-serif;
+}
+
+:root {
+  --background: #f8fafc;
+  --foreground: #1e293b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: var(--foreground);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Shimmer animation for skeletons */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Glow effect for CTA buttons */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(20, 184, 166, 0.4), 0 0 20px rgba(20, 184, 166, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(20, 184, 166, 0.6), 0 0 40px rgba(20, 184, 166, 0.2);
+  }
+}
+
+.glow-teal {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Pulse animation */
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Hide scrollbar for filter chips */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Clerk customizations */
+.cl-card {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 1rem !important;
+}
+
+.cl-headerTitle {
+  color: #0A1929 !important;
+}
+
+.cl-formButtonPrimary {
+  background-color: #14b8a6 !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background-color: #0d9488 !important;
+}
