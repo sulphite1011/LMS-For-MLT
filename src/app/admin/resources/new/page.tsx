@@ -19,22 +19,16 @@ import {
 } from "lucide-react";
 import { getYoutubeThumbnail } from "@/lib/utils";
 
-interface Subject {
-  _id: string;
-  name: string;
-}
-
 const resourceTypes = ["Notes", "Video", "PDF", "Reference", "Quiz"] as const;
 
 export default function NewResourcePage() {
   const router = useRouter();
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   // Form state
   const [title, setTitle] = useState("");
-  const [subjectId, setSubjectId] = useState("");
+  const [subjectName, setSubjectName] = useState("");
   const [resourceType, setResourceType] = useState<string>("");
   const [description, setDescription] = useState("");
   const [youtubeUrls, setYoutubeUrls] = useState<string[]>([""]);
@@ -44,13 +38,6 @@ export default function NewResourcePage() {
   const [file, setFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/subjects")
-      .then((r) => r.json())
-      .then(setSubjects)
-      .catch(() => toast.error("Failed to load subjects"));
-  }, []);
 
   const onFileDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -95,7 +82,7 @@ export default function NewResourcePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !subjectId || !resourceType) {
+    if (!title || !subjectName.trim() || !resourceType) {
       toast.error("Please fill all required fields");
       return;
     }
@@ -106,7 +93,7 @@ export default function NewResourcePage() {
     try {
       const formData = new FormData();
       formData.append("title", title);
-      formData.append("subjectId", subjectId);
+      formData.append("subjectName", subjectName.trim());
       formData.append("resourceType", resourceType);
       formData.append("description", description);
       formData.append(
@@ -210,19 +197,14 @@ export default function NewResourcePage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Subject *
               </label>
-              <select
-                value={subjectId}
-                onChange={(e) => setSubjectId(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm bg-white"
+              <input
+                type="text"
+                value={subjectName}
+                onChange={(e) => setSubjectName(e.target.value)}
+                placeholder="e.g. Mathematics, Physics..."
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm"
                 required
-              >
-                <option value="">Select a subject</option>
-                {subjects.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -336,11 +318,10 @@ export default function NewResourcePage() {
             <button
               type="button"
               onClick={() => setFileMode("upload")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
-                fileMode === "upload"
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${fileMode === "upload"
                   ? "bg-white text-[#1e293b] shadow-sm"
                   : "text-gray-500"
-              }`}
+                }`}
             >
               <Upload className="w-4 h-4" />
               Upload PDF
@@ -348,11 +329,10 @@ export default function NewResourcePage() {
             <button
               type="button"
               onClick={() => setFileMode("external")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
-                fileMode === "external"
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${fileMode === "external"
                   ? "bg-white text-[#1e293b] shadow-sm"
                   : "text-gray-500"
-              }`}
+                }`}
             >
               <LinkIcon className="w-4 h-4" />
               External Link
@@ -362,11 +342,10 @@ export default function NewResourcePage() {
           {fileMode === "upload" ? (
             <div
               {...getFileRootProps()}
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                isFileDragActive
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isFileDragActive
                   ? "border-[#14b8a6] bg-teal-50/50"
                   : "border-gray-200 hover:border-[#14b8a6]"
-              }`}
+                }`}
             >
               <input {...getFileInputProps()} />
               {file ? (

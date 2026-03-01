@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
+import Subject from "@/models/Subject";
 import { requireAdmin } from "@/lib/auth";
 
 export async function GET(
@@ -38,12 +39,12 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
     const { id } = await params;
     const formData = await req.formData();
 
     const title = formData.get("title") as string;
-    const subjectId = formData.get("subjectId") as string;
+    const subjectName = (formData.get("subjectName") as string)?.trim();
     const resourceType = formData.get("resourceType") as string;
     const description = formData.get("description") as string;
     const youtubeUrlsRaw = formData.get("youtubeUrls") as string;
@@ -53,7 +54,7 @@ export async function PUT(
     const bannerFile = formData.get("bannerImage") as File | null;
     const removeFile = formData.get("removeFile") === "true";
 
-    if (!title || !subjectId || !resourceType) {
+    if (!title || !subjectName || !resourceType) {
       return NextResponse.json(
         { error: "Title, subject, and resource type are required" },
         { status: 400 }
@@ -66,9 +67,16 @@ export async function PUT(
 
     await dbConnect();
 
+    // Find or create subject by name (case-insensitive)
+    const subject = await Subject.findOneAndUpdate(
+      { name: { $regex: new RegExp(`^${subjectName}$`, "i") } },
+      { $setOnInsert: { name: subjectName, createdBy: user._id } },
+      { upsert: true, new: true }
+    );
+
     const updateData: Record<string, unknown> = {
       title: title.trim(),
-      subjectId,
+      subjectId: subject._id,
       resourceType,
       description: description?.trim() || "",
       youtubeUrls,

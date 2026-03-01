@@ -19,22 +19,16 @@ import {
 } from "lucide-react";
 import { getYoutubeThumbnail } from "@/lib/utils";
 
-interface Subject {
-  _id: string;
-  name: string;
-}
-
 const resourceTypes = ["Notes", "Video", "PDF", "Reference", "Quiz"] as const;
 
 export default function EditResourcePage() {
   const router = useRouter();
   const { id } = useParams();
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [saving, setSaving] = useState(false);
   const [loadingResource, setLoadingResource] = useState(true);
 
   const [title, setTitle] = useState("");
-  const [subjectId, setSubjectId] = useState("");
+  const [subjectName, setSubjectName] = useState("");
   const [resourceType, setResourceType] = useState<string>("");
   const [description, setDescription] = useState("");
   const [youtubeUrls, setYoutubeUrls] = useState<string[]>([""]);
@@ -47,14 +41,11 @@ export default function EditResourcePage() {
   const [existingFileName, setExistingFileName] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/subjects").then((r) => r.json()),
-      fetch(`/api/resources/${id}`).then((r) => r.json()),
-    ])
-      .then(([subData, resData]) => {
-        setSubjects(subData);
+    fetch(`/api/resources/${id}`)
+      .then((r) => r.json())
+      .then((resData) => {
         setTitle(resData.title || "");
-        setSubjectId(resData.subjectId?._id || "");
+        setSubjectName(resData.subjectId?.name || "");
         setResourceType(resData.resourceType || "");
         setDescription(resData.description || "");
         setYoutubeUrls(
@@ -118,7 +109,7 @@ export default function EditResourcePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !subjectId || !resourceType) {
+    if (!title || !subjectName.trim() || !resourceType) {
       toast.error("Please fill all required fields");
       return;
     }
@@ -127,7 +118,7 @@ export default function EditResourcePage() {
     try {
       const formData = new FormData();
       formData.append("title", title);
-      formData.append("subjectId", subjectId);
+      formData.append("subjectName", subjectName.trim());
       formData.append("resourceType", resourceType);
       formData.append("description", description);
       formData.append(
@@ -215,17 +206,14 @@ export default function EditResourcePage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Subject *
               </label>
-              <select
-                value={subjectId}
-                onChange={(e) => setSubjectId(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm bg-white"
+              <input
+                type="text"
+                value={subjectName}
+                onChange={(e) => setSubjectName(e.target.value)}
+                placeholder="e.g. Mathematics, Physics..."
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm"
                 required
-              >
-                <option value="">Select a subject</option>
-                {subjects.map((s) => (
-                  <option key={s._id} value={s._id}>{s.name}</option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
