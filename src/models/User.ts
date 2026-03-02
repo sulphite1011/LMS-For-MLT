@@ -3,7 +3,7 @@ import mongoose, { Schema, Model } from "mongoose";
 export interface IUserDoc extends mongoose.Document {
   clerkId: string;
   username: string;
-  role: "superAdmin" | "admin";
+  role: "superAdmin" | "admin" | "user";
   createdAt: Date;
   createdBy?: mongoose.Types.ObjectId;
 }
@@ -11,7 +11,7 @@ export interface IUserDoc extends mongoose.Document {
 const UserSchema = new Schema<IUserDoc>({
   clerkId: { type: String, required: true, unique: true },
   username: { type: String, required: true, unique: true },
-  role: { type: String, enum: ["superAdmin", "admin"], default: "admin" },
+  role: { type: String, enum: ["superAdmin", "admin", "user"], default: "user" },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: "User" },
 });

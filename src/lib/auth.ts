@@ -8,7 +8,7 @@ export async function getAuthUser() {
 
   await dbConnect();
   const user = await User.findOne({ clerkId: userId });
-  return user;
+  return user as any; // Cast as IUserDoc for role check
 }
 
 export async function requireAuth() {
@@ -42,16 +42,48 @@ export async function syncUser() {
   const clerkUser = await currentUser();
   if (!clerkUser) return null;
 
-  await dbConnect();
+  const emails = clerkUser.emailAddresses.map(e => e.emailAddress.toLowerCase());
+  const isHamad = emails.includes("hamadkhadimdgkmc@gmail.com");
 
-  let user = await User.findOne({ clerkId: userId });
-  if (!user) {
-    user = await User.create({
-      clerkId: userId,
-      username: clerkUser.username || clerkUser.firstName || "user",
-      role: "admin",
-    });
+  console.log(`[Lib Sync] Syncing user ${userId}. Emails: ${emails.join(", ")}. Is Super Admin: ${isHamad}`);
+
+  try {
+    await dbConnect();
+
+    let user = await User.findOne({ clerkId: userId });
+    if (!user) {
+      console.log(`[Lib Sync] User not found. Creating...`);
+      try {
+        user = await User.create({
+          clerkId: userId,
+          username: clerkUser.username || clerkUser.firstName || `user_${userId.slice(-5)}`,
+          role: isHamad ? "superAdmin" : "user",
+        });
+      } catch (createError: any) {
+        if (createError.code === 11000) {
+          console.log(`[Lib Sync] Username collision. Retrying with suffix...`);
+          user = await User.create({
+            clerkId: userId,
+            username: `${clerkUser.username || clerkUser.firstName || "user"}_${userId.slice(-5)}`,
+            role: isHamad ? "superAdmin" : "user",
+          });
+        } else {
+          throw createError;
+        }
+      }
+      console.log(`[Lib Sync] Created user: ${user.username} with role: ${user.role}`);
+    } else {
+      console.log(`[Lib Sync] User exists: ${user.username}, Role: ${user.role}`);
+      if (isHamad && user.role !== "superAdmin") {
+        console.log(`[Lib Sync] Forcing superAdmin role for Hamad`);
+        user.role = "superAdmin";
+        await user.save();
+      }
+    }
+
+    return user;
+  } catch (error) {
+    console.error("[Lib Sync Error]:", error);
+    return null;
   }
-
-  return user;
 }

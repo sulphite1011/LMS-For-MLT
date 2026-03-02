@@ -102,7 +102,8 @@ export default function ResourceDetailClient({ id }: { id: string }) {
           </p>
           <button
             onClick={() => router.push("/")}
-            className="bg-[#14b8a6] text-white px-6 py-2.5 rounded-full font-medium hover:bg-[#0d9488] transition-colors"
+            className="bg-teal text-white px-6 py-2.5 rounded-full font-medium hover:bg-teal-dark transition-colors"
+            suppressHydrationWarning
           >
             Back to Home
           </button>
@@ -124,7 +125,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="relative h-64 md:h-80 bg-gradient-to-br from-[#0A1929] to-[#132F4C] overflow-hidden"
+        className="relative h-64 md:h-80 bg-linear-to-br from-navy to-navy-light overflow-hidden"
       >
         {resource.bannerImageUrl && (
           <img
@@ -133,7 +134,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
             className="w-full h-full object-cover opacity-30"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1929] via-[#0A1929]/60 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-navy via-navy/60 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-10 max-w-7xl mx-auto">
           <motion.button
             initial={{ opacity: 0, x: -20 }}
@@ -178,7 +179,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
           <div className="lg:col-span-2 space-y-6">
             {resource.description && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-[#1e293b] mb-3">
+                <h2 className="text-lg font-semibold text-text-primary mb-3">
                   Description
                 </h2>
                 <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
@@ -190,7 +191,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
             {/* YouTube Videos */}
             {resource.youtubeUrls?.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-[#1e293b] mb-4">
+                <h2 className="text-lg font-semibold text-text-primary mb-4">
                   Video Content
                 </h2>
                 {embedUrl && (
@@ -211,9 +212,10 @@ export default function ResourceDetailClient({ id }: { id: string }) {
                         key={i}
                         onClick={() => setActiveVideo(i)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${i === activeVideo
-                            ? "bg-[#14b8a6] text-white"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          ? "bg-teal text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                           }`}
+                        suppressHydrationWarning
                       >
                         <Play className="w-3.5 h-3.5" />
                         Video {i + 1}
@@ -226,7 +228,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
 
             {/* Metadata */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-[#1e293b] mb-3">
+              <h2 className="text-lg font-semibold text-text-primary mb-3">
                 Details
               </h2>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -271,7 +273,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
             {/* PDF / File Access */}
             {resource.fileData && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h3 className="font-semibold text-[#1e293b] mb-4">
+                <h3 className="font-semibold text-text-primary mb-4">
                   Access Material
                 </h3>
                 {resource.fileData.fileType === "external" &&
@@ -280,7 +282,8 @@ export default function ResourceDetailClient({ id }: { id: string }) {
                     href={resource.fileData.externalLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-[#14b8a6]/20"
+                    className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20"
+                    suppressHydrationWarning
                   >
                     <ExternalLink className="w-5 h-5" />
                     Open External Link
@@ -291,7 +294,8 @@ export default function ResourceDetailClient({ id }: { id: string }) {
                       href={`/api/resources/${resource._id}/file`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-[#14b8a6]/20"
+                      className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20"
+                      suppressHydrationWarning
                     >
                       <FileText className="w-5 h-5" />
                       View PDF
@@ -312,7 +316,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
             {/* Quick links for videos */}
             {resource.youtubeUrls?.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h3 className="font-semibold text-[#1e293b] mb-3">
+                <h3 className="font-semibold text-text-primary mb-3">
                   Video Links
                 </h3>
                 <div className="space-y-2">
@@ -322,11 +326,11 @@ export default function ResourceDetailClient({ id }: { id: string }) {
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#14b8a6] transition-colors py-1"
+                      className="flex items-center gap-2 text-sm text-gray-600 hover:text-teal transition-colors py-1"
                     >
-                      <Play className="w-3.5 h-3.5 flex-shrink-0" />
+                      <Play className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">Video {i + 1}</span>
-                      <ExternalLink className="w-3 h-3 flex-shrink-0 ml-auto" />
+                      <ExternalLink className="w-3 h-3 shrink-0 ml-auto" />
                     </a>
                   ))}
                 </div>
@@ -343,7 +347,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
             transition={{ delay: 0.5 }}
             className="mt-12"
           >
-            <h2 className="text-xl font-bold text-[#1e293b] mb-6">
+            <h2 className="text-xl font-bold text-text-primary mb-6">
               Related Resources
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

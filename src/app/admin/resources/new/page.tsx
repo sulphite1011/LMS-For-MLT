@@ -189,6 +189,7 @@ export default function NewResourcePage() {
               placeholder="Enter resource title"
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm"
               required
+              suppressHydrationWarning
             />
           </div>
 
@@ -204,6 +205,7 @@ export default function NewResourcePage() {
                 placeholder="e.g. Mathematics, Physics..."
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm"
                 required
+                suppressHydrationWarning
               />
             </div>
             <div>
@@ -215,6 +217,7 @@ export default function NewResourcePage() {
                 onChange={(e) => setResourceType(e.target.value)}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm bg-white"
                 required
+                suppressHydrationWarning
               >
                 <option value="">Select type</option>
                 {resourceTypes.map((t) => (
@@ -319,8 +322,8 @@ export default function NewResourcePage() {
               type="button"
               onClick={() => setFileMode("upload")}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${fileMode === "upload"
-                  ? "bg-white text-[#1e293b] shadow-sm"
-                  : "text-gray-500"
+                ? "bg-white text-[#1e293b] shadow-sm"
+                : "text-gray-500"
                 }`}
             >
               <Upload className="w-4 h-4" />
@@ -330,8 +333,8 @@ export default function NewResourcePage() {
               type="button"
               onClick={() => setFileMode("external")}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${fileMode === "external"
-                  ? "bg-white text-[#1e293b] shadow-sm"
-                  : "text-gray-500"
+                ? "bg-white text-[#1e293b] shadow-sm"
+                : "text-gray-500"
                 }`}
             >
               <LinkIcon className="w-4 h-4" />
@@ -343,8 +346,8 @@ export default function NewResourcePage() {
             <div
               {...getFileRootProps()}
               className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isFileDragActive
-                  ? "border-[#14b8a6] bg-teal-50/50"
-                  : "border-gray-200 hover:border-[#14b8a6]"
+                ? "border-[#14b8a6] bg-teal-50/50"
+                : "border-gray-200 hover:border-[#14b8a6]"
                 }`}
             >
               <input {...getFileInputProps()} />

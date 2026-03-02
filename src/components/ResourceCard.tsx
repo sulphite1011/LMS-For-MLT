@@ -41,7 +41,7 @@ export function ResourceCard({
       <Link href={`/resource/${_id}`}>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 h-full flex flex-col">
           {/* Banner */}
-          <div className="relative h-48 bg-gradient-to-br from-[#0A1929] to-[#132F4C] overflow-hidden">
+          <div className="relative h-48 bg-linear-to-br from-navy to-navy-light overflow-hidden">
             {bannerImageUrl ? (
               <img
                 src={bannerImageUrl}
@@ -54,7 +54,7 @@ export function ResourceCard({
               </div>
             )}
             {/* Overlay gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
 
             {/* Type badge */}
             <div
@@ -74,7 +74,7 @@ export function ResourceCard({
 
             {/* Hover button */}
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <span className="bg-[#14b8a6] text-white px-5 py-2.5 rounded-full text-sm font-medium shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+              <span className="bg-teal text-white px-5 py-2.5 rounded-full text-sm font-medium shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                 View Resource
               </span>
             </div>
@@ -83,12 +83,12 @@ export function ResourceCard({
           {/* Content */}
           <div className="p-5 flex-1 flex flex-col">
             <div className="flex items-center gap-2 mb-2">
-              <BookOpen className="w-3.5 h-3.5 text-[#14b8a6]" />
-              <span className="text-xs font-medium text-[#14b8a6]">
+              <BookOpen className="w-3.5 h-3.5 text-teal" />
+              <span className="text-xs font-medium text-teal">
                 {subjectName}
               </span>
             </div>
-            <h3 className="font-semibold text-[#1e293b] text-base line-clamp-2 mb-2 group-hover:text-[#14b8a6] transition-colors">
+            <h3 className="font-semibold text-text-primary text-base line-clamp-2 mb-2 group-hover:text-teal transition-colors">
               {title}
             </h3>
             {description && (
