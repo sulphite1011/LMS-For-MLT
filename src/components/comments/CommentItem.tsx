@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ThumbsUp, Reply, MessageSquare, MoreVertical, Send } from "lucide-react";
+import { ThumbsUp, Reply, MessageSquare, MoreVertical, Send, Star, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "@/lib/utils";
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
@@ -12,6 +12,7 @@ interface Reply {
   userName: string;
   userImage?: string;
   content: string;
+  likes: string[];
   createdAt: string;
 }
 
@@ -24,24 +25,49 @@ interface Comment {
   likes: string[];
   replies: Reply[];
   createdAt: string;
+  resourceId?: string;
+  userId: string;
 }
 
 interface CommentItemProps {
   comment: Comment;
-  onLike: (id: string) => void;
+  onLike: (id: string, replyIndex?: number) => void;
   onReply: (id: string, content: string) => void;
+  onDelete: (id: string, replyIndex?: number) => void;
   isReply?: boolean;
+  replyIndex?: number;
+  parentId?: string;
+  resourceAuthorId?: string;
 }
 
 const DEFAULT_AVATAR = "/images/default-avatar.png";
 
-export function CommentItem({ comment, onLike, onReply, isReply = false }: CommentItemProps) {
+export function CommentItem({
+  comment,
+  onLike,
+  onReply,
+  onDelete,
+  isReply = false,
+  replyIndex,
+  parentId,
+  resourceAuthorId
+}: CommentItemProps) {
   const { user: currentUser } = useUser();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if current user is admin/superAdmin (simplified check, real check should be from Clerk metadata/token)
+  // But for UI purpose, we can check email or role if available in public metadata
+  // However, the superAdmin email is known: hamadkhadimdgkmc@gmail.com
+  const isSuperAdmin = currentUser?.primaryEmailAddress?.emailAddress === "hamadkhadimdgkmc@gmail.com";
+  const isAuthor = currentUser?.id === comment.userId;
+  const isResourceAuthor = comment.userId === resourceAuthorId;
+  const canDelete = isAuthor || isSuperAdmin;
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [isLiking, setIsLiking] = useState(false);
 
-  const hasLiked = currentUser && comment.likes.includes(currentUser.id);
+  const currentTarget = isReply ? comment : comment; // The comment prop passed in the map IS the reply object for replies
+  const hasLiked = currentUser && comment.likes?.includes(currentUser.id);
 
   const handleLike = async () => {
     if (!currentUser) {
@@ -49,7 +75,11 @@ export function CommentItem({ comment, onLike, onReply, isReply = false }: Comme
       return;
     }
     setIsLiking(true);
-    await onLike(comment._id);
+    if (isReply && parentId && typeof replyIndex === "number") {
+      await onLike(parentId, replyIndex);
+    } else {
+      await onLike(comment._id);
+    }
     setIsLiking(false);
   };
 
@@ -81,12 +111,42 @@ export function CommentItem({ comment, onLike, onReply, isReply = false }: Comme
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <h4 className={`font-semibold text-slate-800 truncate ${isReply ? "text-sm" : "text-base"}`}>
-              {comment.userName}
-            </h4>
-            <span className="text-[10px] md:text-xs text-slate-400 whitespace-nowrap">
-              {formatDistanceToNow(new Date(comment.createdAt))}
-            </span>
+            <div className="flex flex-col mb-1">
+              <div className="flex items-center gap-2">
+                <h4 className={`font-semibold text-slate-800 truncate ${isReply ? "text-sm" : "text-base"}`}>
+                  {comment.userName}
+                </h4>
+                {isResourceAuthor && (
+                  <span className="bg-teal/10 text-teal text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-teal/20">
+                    Author
+                  </span>
+                )}
+              </div>
+              {comment.rating && !isReply && !isResourceAuthor && (
+                <div className="flex items-center gap-0.5 mt-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-3 h-3 ${i < (comment.rating || 0) ? "text-yellow-400 fill-yellow-400" : "text-slate-200"}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] md:text-xs text-slate-400 whitespace-nowrap">
+                {formatDistanceToNow(new Date(comment.createdAt))}
+              </span>
+              {canDelete && (
+                <button
+                  onClick={() => onDelete(isReply && parentId ? parentId : comment._id, isReply ? replyIndex : undefined)}
+                  className="p-1 text-slate-300 hover:text-red-500 transition-colors"
+                  title={isReply ? "Delete reply" : "Delete comment"}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           <p className={`text-slate-600 leading-relaxed mb-3 ${isReply ? "text-sm" : "text-base"}`}>
@@ -100,7 +160,7 @@ export function CommentItem({ comment, onLike, onReply, isReply = false }: Comme
                 }`}
             >
               <ThumbsUp className={`w-3.5 h-3.5 ${hasLiked ? "fill-teal" : ""}`} />
-              {comment.likes.length > 0 && <span>{comment.likes.length}</span>}
+              {(comment.likes?.length || 0) > 0 && <span>{comment.likes.length}</span>}
               <span>{hasLiked ? "Liked" : "Like"}</span>
             </button>
 
@@ -153,13 +213,17 @@ export function CommentItem({ comment, onLike, onReply, isReply = false }: Comme
                   comment={{
                     _id: `${comment._id}-reply-${idx}`,
                     ...reply,
-                    likes: [],
+                    likes: (reply as any).likes || [],
                     replies: [],
                     rating: undefined,
                   } as any}
-                  onLike={() => { }} // Simple likes for now
-                  onReply={() => { }}
+                  onLike={onLike}
+                  onReply={onReply}
+                  onDelete={onDelete}
                   isReply={true}
+                  replyIndex={idx}
+                  parentId={comment._id}
+                  resourceAuthorId={resourceAuthorId}
                 />
               ))}
             </div>

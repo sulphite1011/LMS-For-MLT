@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Plus, Pencil, Trash2, FileText, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Eye, Star } from "lucide-react";
 import toast from "react-hot-toast";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -16,6 +16,8 @@ interface Resource {
   subjectId: { _id: string; name: string };
   createdAt: string;
   fileData?: { fileType: string };
+  averageRating?: number | string;
+  totalRatings?: number;
 }
 
 export default function ResourcesPage() {
@@ -119,6 +121,9 @@ export default function ResourcesPage() {
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">
                     Created
                   </th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Rating
+                  </th>
                   <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -150,6 +155,19 @@ export default function ResourcesPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 hidden lg:table-cell">
                       {new Date(resource.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      {resource.totalRatings && resource.totalRatings > 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-0.5 text-yellow-500">
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                            <span className="font-bold text-xs">{resource.averageRating}</span>
+                          </div>
+                          <span className="text-[10px] text-gray-400">({resource.totalRatings})</span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-gray-300">No ratings</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">

@@ -17,9 +17,10 @@ interface Comment {
   likes: string[];
   replies: any[];
   createdAt: string;
+  userId: string;
 }
 
-export function CommentSection({ resourceId }: { resourceId: string }) {
+export function CommentSection({ resourceId, resourceAuthorId }: { resourceId: string, resourceAuthorId?: string }) {
   const { user } = useUser();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,12 +74,15 @@ export function CommentSection({ resourceId }: { resourceId: string }) {
     }
   };
 
-  const handleLike = async (commentId: string) => {
+  const handleLike = async (commentId: string, replyIndex?: number) => {
     try {
       const res = await fetch(`/api/comments/${commentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "like" }),
+        body: JSON.stringify({
+          action: "like",
+          replyIndex: typeof replyIndex === "number" ? replyIndex : undefined
+        }),
       });
       if (res.ok) {
         const updatedComment = await res.json();
@@ -86,6 +90,35 @@ export function CommentSection({ resourceId }: { resourceId: string }) {
       }
     } catch (error) {
       console.error("Like failed", error);
+    }
+  };
+
+  const handleDelete = async (commentId: string, replyIndex?: number) => {
+    const isReply = typeof replyIndex === "number";
+    if (!window.confirm(`Are you sure you want to delete this ${isReply ? 'reply' : 'comment'}?`)) return;
+
+    try {
+      const res = await fetch(`/api/comments/${commentId}`, {
+        method: isReply ? "PATCH" : "DELETE",
+        headers: isReply ? { "Content-Type": "application/json" } : undefined,
+        body: isReply ? JSON.stringify({ action: "delete_reply", replyIndex }) : undefined,
+      });
+
+      if (res.ok) {
+        if (isReply) {
+          const updatedComment = await res.json();
+          setComments(comments.map(c => c._id === commentId ? updatedComment : c));
+          toast.success("Reply deleted");
+        } else {
+          setComments(comments.filter(c => c._id !== commentId));
+          toast.success("Comment deleted");
+        }
+      } else {
+        const data = await res.json();
+        toast.error(data.error || `Failed to delete ${isReply ? 'reply' : 'comment'}`);
+      }
+    } catch (error) {
+      toast.error("An error occurred");
     }
   };
 
@@ -226,6 +259,8 @@ export function CommentSection({ resourceId }: { resourceId: string }) {
                   comment={comment}
                   onLike={handleLike}
                   onReply={handleReply}
+                  onDelete={handleDelete}
+                  resourceAuthorId={resourceAuthorId}
                 />
               ))}
             </AnimatePresence>

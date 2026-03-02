@@ -40,6 +40,7 @@ interface Resource {
   };
   youtubeUrls: string[];
   createdAt: string;
+  createdBy: { _id: string; clerkId: string };
   averageRating?: number | string;
   totalRatings?: number;
 }
@@ -356,7 +357,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <CommentSection resourceId={resource._id} />
+          <CommentSection resourceId={resource._id} resourceAuthorId={resource.createdBy?.clerkId} />
         </motion.div>
 
         {/* Related Resources */}

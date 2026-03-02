@@ -15,6 +15,7 @@ interface ResourceCardProps {
   hasFile?: boolean;
   averageRating?: number | string;
   totalRatings?: number;
+  resourceAuthorId?: string;
 }
 
 const typeIcons: Record<ResourceType, React.ReactNode> = {
@@ -35,6 +36,7 @@ export function ResourceCard({
   hasFile,
   averageRating,
   totalRatings,
+  resourceAuthorId,
 }: ResourceCardProps) {
   return (
     <motion.div

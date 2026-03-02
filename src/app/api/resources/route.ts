@@ -3,6 +3,8 @@ import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
 import Subject from "@/models/Subject";
 import Comment from "@/models/Comment";
+import User from "@/models/User";
+import mongoose from "mongoose";
 import { requireAdmin, getAuthUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
@@ -16,8 +18,6 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const isAdminDashboard = searchParams.get("admin") === "true";
-
-    const currentUser = await getAuthUser();
 
     const filter: Record<string, unknown> = {};
 
@@ -35,8 +35,9 @@ export async function GET(req: NextRequest) {
     }
 
     // If it's the admin dashboard, filter by ownership unless superAdmin
-    if (isAdminDashboard && currentUser) {
-      if (currentUser.role === "admin") {
+    if (isAdminDashboard) {
+      const currentUser = await getAuthUser();
+      if (currentUser?.role === "admin") {
         filter.createdBy = currentUser._id;
       }
     }
@@ -45,6 +46,7 @@ export async function GET(req: NextRequest) {
       Resource.find(filter)
         .select("-fileData.fileContent -bannerImageData")
         .populate("subjectId", "name")
+        .populate("createdBy", "clerkId")
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -52,8 +54,18 @@ export async function GET(req: NextRequest) {
       Resource.countDocuments(filter),
     ]);
 
-    // Fetch rating stats for all resources
-    const resourceIds = resources.map(r => r._id);
+    // Fast return if no resources found
+    if (resources.length === 0) {
+      return NextResponse.json({
+        resources: [],
+        total: 0,
+        pages: 0,
+        page,
+      });
+    }
+
+    // Fetch rating stats for all resources with robust Type checking
+    const resourceIds = resources.map(r => new mongoose.Types.ObjectId(String(r._id)));
     const ratingStats = await Comment.aggregate([
       { $match: { resourceId: { $in: resourceIds }, rating: { $exists: true } } },
       {
@@ -66,10 +78,10 @@ export async function GET(req: NextRequest) {
     ]);
 
     const resourcesWithRatings = resources.map(resource => {
-      const stats = ratingStats.find(s => s._id.toString() === resource._id.toString());
+      const stats = ratingStats.find(s => String(s._id) === String(resource._id));
       return {
         ...resource,
-        averageRating: stats ? stats.averageRating.toFixed(1) : 0,
+        averageRating: stats ? Number(stats.averageRating.toFixed(1)) : 0,
         totalRatings: stats ? stats.totalRatings : 0
       };
     });

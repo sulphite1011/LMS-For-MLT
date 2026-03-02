@@ -15,7 +15,7 @@ export async function POST() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const emails = clerkUser.emailAddresses.map(e => e.emailAddress.toLowerCase());
+    const emails = (clerkUser.emailAddresses || []).map(e => e.emailAddress.toLowerCase());
     const isHamad = emails.includes("hamadkhadimdgkmc@gmail.com");
 
     console.log(`[API Sync] Starting sync for ${userId}. Emails: ${emails.join(", ")}`);
@@ -26,33 +26,39 @@ export async function POST() {
 
     if (!user) {
       console.log(`[API Sync] User not found in DB. Creating...`);
-      // Try to create with a unique username if the primary one fails
+      const username = clerkUser.username || clerkUser.firstName || `user_${userId.slice(-5)}`;
       try {
         user = await User.create({
           clerkId: userId,
-          username: clerkUser.username || clerkUser.firstName || `user_${userId.slice(-5)}`,
+          username,
+          userImage: clerkUser.imageUrl,
           role: isHamad ? "superAdmin" : "user",
         });
       } catch (createError: any) {
         if (createError.code === 11000) {
-          console.log(`[API Sync] Username collision. Retrying with ID suffix...`);
+          console.log(`[API Sync] Username collision. Retrying...`);
           user = await User.create({
             clerkId: userId,
-            username: `${clerkUser.username || clerkUser.firstName || "user"}_${userId.slice(-5)}`,
+            username: `${username}_${userId.slice(-5)}`,
+            userImage: clerkUser.imageUrl,
             role: isHamad ? "superAdmin" : "user",
           });
         } else {
           throw createError;
         }
       }
-      console.log(`[API Sync] Created user: ${user.username} with role: ${user.role}`);
     } else {
-      console.log(`[API Sync] User found: ${user.username}, Role: ${user.role}`);
+      console.log(`[API Sync] User found: ${user.username}`);
+      let hasChanges = false;
       if (isHamad && user.role !== "superAdmin") {
-        console.log(`[API Sync] Forcing superAdmin role for Hamad`);
         user.role = "superAdmin";
-        await user.save();
+        hasChanges = true;
       }
+      if (user.userImage !== clerkUser.imageUrl) {
+        user.userImage = clerkUser.imageUrl;
+        hasChanges = true;
+      }
+      if (hasChanges) await user.save();
     }
 
     return NextResponse.json({
@@ -63,7 +69,11 @@ export async function POST() {
   } catch (error: any) {
     console.error("[API Sync Error]:", error);
     return NextResponse.json(
-      { error: error.message || "Internal server error", details: error },
+      {
+        error: error.message || "Internal server error",
+        message: error.message,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined
+      },
       { status: 500 }
     );
   }

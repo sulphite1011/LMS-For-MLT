@@ -5,6 +5,7 @@ export interface IReply {
   userName: string;
   userImage?: string;
   content: string;
+  likes: string[]; // Array of Clerk IDs
   createdAt: Date;
 }
 
@@ -26,6 +27,7 @@ const ReplySchema = new Schema<IReply>({
   userName: { type: String, required: true },
   userImage: { type: String },
   content: { type: String, required: true },
+  likes: [{ type: String }],
   createdAt: { type: Date, default: Date.now },
 });
 

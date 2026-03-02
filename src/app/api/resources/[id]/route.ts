@@ -3,6 +3,8 @@ import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
 import Subject from "@/models/Subject";
 import Comment from "@/models/Comment";
+import User from "@/models/User";
+import mongoose from "mongoose";
 import { requireAdmin } from "@/lib/auth";
 
 export async function GET(
@@ -16,6 +18,7 @@ export async function GET(
     const resource = await Resource.findById(id)
       .select("-fileData.fileContent -bannerImageData")
       .populate("subjectId", "name")
+      .populate("createdBy", "clerkId")
       .lean();
 
     if (!resource) {
@@ -25,8 +28,11 @@ export async function GET(
       );
     }
 
-    // Fetch rating stats
-    const ratedComments = await Comment.find({ resourceId: id, rating: { $exists: true } });
+    // Fetch rating stats with robust ObjectId matching
+    const ratedComments = await Comment.find({
+      resourceId: new mongoose.Types.ObjectId(id),
+      rating: { $exists: true }
+    });
     const totalRatings = ratedComments.length;
     const averageRating = totalRatings > 0
       ? (ratedComments.reduce((acc, c) => acc + (c.rating || 0), 0) / totalRatings).toFixed(1)
@@ -34,7 +40,7 @@ export async function GET(
 
     return NextResponse.json({
       ...resource,
-      averageRating,
+      averageRating: Number(averageRating),
       totalRatings
     });
   } catch (error) {
