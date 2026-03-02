@@ -14,17 +14,67 @@ const inter = Inter({
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Hamad's LMS - MLT Study Hub",
+  metadataBase: new URL("https://lms-for-mlt.vercel.app"),
+  title: {
+    default: "Hamad's MLT Study Hub — Free Medical Lab Technology Resources",
+    template: "%s | Hamad's MLT Study Hub",
+  },
   description:
-    "Your complete Medical Laboratory Technology resource library. Access notes, videos, PDFs, and more.",
-  keywords: ["MLT", "Medical Laboratory Technology", "Study", "Resources", "LMS"],
-  // Add Google verification meta tag here
+    "Access free Medical Laboratory Technology (MLT) notes, videos, PDFs, and quizzes. Your complete study hub for Hematology, Microbiology, Clinical Chemistry, Histopathology, Immunology, Blood Banking, and more.",
+  keywords: [
+    // Core program
+    "MLT", "Medical Laboratory Technology", "Medical Lab Technician",
+    "Allied Health Sciences", "AHS", "MIT", "OTT", "Nursing",
+    // Semester subjects
+    "Basic Biochemistry", "Basic Anatomy", "Basic Physiology",
+    "Basic Lab Instrumentation", "General Pathology",
+    // Histopathology
+    "Histopathology", "Histopathology notes", "Histopathology MLT",
+    // Hematology
+    "Hematology", "Hematology notes for MLT", "Hematology I", "Hematology II", "Hematology III",
+    // Microbiology
+    "Microbiology", "Basic Bacteriology", "Microbiology MLT",
+    // Chemical Pathology
+    "Chemical Pathology", "Clinical Chemistry", "Clinical Chemistry PDF",
+    // Immunology & Blood Banking
+    "Immunology", "Basic Immunology and Serology", "Advanced Immunology",
+    "Blood Banking", "Transfusion Medicine",
+    // Molecular Biology
+    "Molecular Biology", "Molecular Biology and Genetics",
+    "Molecular Pathology", "Cytogenetics", "Basic Molecular Biology",
+    // Other subjects
+    "Biostatistics", "Quality Control", "Accreditation",
+    "Biosafety", "Risk Management", "Research Methodology",
+    // Study resources
+    "MLT study resources", "MLT notes", "MLT practice quizzes",
+    "MLT exam prep", "MLT PDF", "free MLT resources",
+    "Hamad MLT", "LMS for MLT",
+  ],
   verification: {
     google: "J7pJjyMwoeQK6XCpWQvxWltPw5NODQ1to-0XCzoB5Ng",
   },
-  // Add canonical URL
   alternates: {
     canonical: "https://lms-for-mlt.vercel.app",
+  },
+  openGraph: {
+    type: "website",
+    url: "https://lms-for-mlt.vercel.app",
+    siteName: "Hamad's MLT Study Hub",
+    title: "Hamad's MLT Study Hub — Free Medical Lab Technology Resources",
+    description:
+      "Access free Medical Laboratory Technology (MLT) notes, videos, PDFs, and quizzes. Your complete study hub for Hematology, Microbiology, Clinical Chemistry, Histopathology, Immunology, Blood Banking, and more.",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Hamad's MLT Study Hub — Free Medical Lab Technology Resources",
+    description:
+      "Free MLT notes, PDFs, videos, and quizzes — all subjects from Hematology to Molecular Biology.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
   },
 };
 
