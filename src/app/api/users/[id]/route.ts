@@ -32,7 +32,14 @@ export async function DELETE(
       );
     }
 
-    await User.findByIdAndDelete(id);
+    // If it's a pending record (clerkId starts with pending_), we can delete it
+    if (user.clerkId.startsWith("pending_")) {
+      await User.findByIdAndDelete(id);
+    } else {
+      // Otherwise, just demote them to regular user
+      user.role = "user";
+      await user.save();
+    }
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message =

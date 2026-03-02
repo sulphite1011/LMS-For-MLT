@@ -12,8 +12,9 @@ interface User {
   _id: string;
   clerkId: string;
   username: string;
-  role: "superAdmin" | "admin";
+  role: "superAdmin" | "admin" | "user";
   createdAt: string;
+  isPending?: boolean;
 }
 
 export default function UsersPage() {
@@ -295,15 +296,19 @@ export default function UsersPage() {
                     <span
                       className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${user.role === "superAdmin"
                         ? "bg-purple-50 text-purple-600"
-                        : "bg-blue-50 text-blue-600"
+                        : user.role === "admin"
+                          ? "bg-blue-50 text-blue-600"
+                          : "bg-gray-100 text-gray-600"
                         }`}
                     >
                       {user.role === "superAdmin" ? (
                         <ShieldCheck className="w-3.5 h-3.5" />
-                      ) : (
+                      ) : user.role === "admin" ? (
                         <Shield className="w-3.5 h-3.5" />
+                      ) : (
+                        <UsersIcon className="w-3.5 h-3.5" />
                       )}
-                      {user.role === "superAdmin" ? "Super Admin" : "Admin"}
+                      {user.role === "superAdmin" ? "Super Admin" : user.role === "admin" ? "Admin" : "User"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
@@ -311,11 +316,11 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
-                      {user.role !== "superAdmin" && (
+                      {user.role === "admin" && (
                         <button
                           onClick={() => setDeleteId(user._id)}
                           className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
+                          title="Revoke Admin Access"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -333,8 +338,8 @@ export default function UsersPage() {
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title="Delete Admin User"
-        message="Are you sure you want to delete this admin user? They will lose all access."
+        title="Revoke Admin Access"
+        message="Are you sure you want to revoke admin access for this user? They will still be able to use the site as a regular user."
         loading={deleting}
       />
     </div>

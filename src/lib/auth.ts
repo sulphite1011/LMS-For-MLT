@@ -79,6 +79,8 @@ export async function syncUser() {
         user.role = "superAdmin";
         await user.save();
       }
+      // Note: We intentionally DO NOT upgrade regular users to admin here.
+      // Admin status is managed via the Super Admin dashboard or the claim flow.
     }
 
     return user;

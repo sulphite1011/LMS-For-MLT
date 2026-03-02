@@ -26,7 +26,7 @@ export default function ResourcesPage() {
 
   const fetchResources = async () => {
     try {
-      const res = await fetch("/api/resources?limit=100");
+      const res = await fetch("/api/resources?limit=100&admin=true");
       const data = await res.json();
       setResources(data.resources || []);
     } catch {
@@ -67,7 +67,7 @@ export default function ResourcesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1e293b]">Resources</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Resources</h1>
           <p className="text-gray-500 text-sm mt-1">
             Manage all learning resources
           </p>
@@ -76,7 +76,7 @@ export default function ResourcesPage() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-2 bg-[#14b8a6] hover:bg-[#0d9488] text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-md"
+            className="flex items-center gap-2 bg-teal hover:bg-teal-dark text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-md"
           >
             <Plus className="w-4 h-4" />
             Add Resource
@@ -95,7 +95,7 @@ export default function ResourcesPage() {
           </p>
           <Link
             href="/admin/resources/new"
-            className="inline-flex items-center gap-2 bg-[#14b8a6] text-white px-5 py-2.5 rounded-xl font-medium mt-4 hover:bg-[#0d9488] transition-colors"
+            className="inline-flex items-center gap-2 bg-teal text-white px-5 py-2.5 rounded-xl font-medium mt-4 hover:bg-teal-dark transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Resource
@@ -134,7 +134,7 @@ export default function ResourcesPage() {
                     className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
                   >
                     <td className="px-6 py-4">
-                      <span className="font-medium text-[#1e293b] line-clamp-1">
+                      <span className="font-medium text-text-primary line-clamp-1">
                         {resource.title}
                       </span>
                     </td>
@@ -162,7 +162,7 @@ export default function ResourcesPage() {
                         </Link>
                         <Link
                           href={`/admin/resources/${resource._id}/edit`}
-                          className="p-2 text-gray-400 hover:text-[#14b8a6] hover:bg-teal-50 rounded-lg transition-colors"
+                          className="p-2 text-gray-400 hover:text-teal hover:bg-teal-50 rounded-lg transition-colors"
                           title="Edit"
                         >
                           <Pencil className="w-4 h-4" />

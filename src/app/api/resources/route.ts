@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
 import Subject from "@/models/Subject";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, getAuthUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +14,9 @@ export async function GET(req: NextRequest) {
     const subject = searchParams.get("subject");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
+    const isAdminDashboard = searchParams.get("admin") === "true";
+
+    const currentUser = await getAuthUser();
 
     const filter: Record<string, unknown> = {};
 
@@ -28,6 +31,13 @@ export async function GET(req: NextRequest) {
     }
     if (subject) {
       filter.subjectId = subject;
+    }
+
+    // If it's the admin dashboard, filter by ownership unless superAdmin
+    if (isAdminDashboard && currentUser) {
+      if (currentUser.role === "admin") {
+        filter.createdBy = currentUser._id;
+      }
     }
 
     const [resources, total] = await Promise.all([
