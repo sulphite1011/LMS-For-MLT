@@ -89,6 +89,7 @@ export async function PATCH(req: NextRequest) {
     if (customAvatar !== undefined) {
       // Accepts base64 data URL or https:// URL — processed on client side
       updateData.customAvatar = customAvatar;
+      updateData.userImage = customAvatar; // Force sync the visual avatar so it doesn't flicker on refresh
     }
 
     const updated = await User.findOneAndUpdate(

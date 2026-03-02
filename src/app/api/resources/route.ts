@@ -153,13 +153,22 @@ export async function POST(req: NextRequest) {
     resourceData.files = processedFiles;
 
     // Handle external links
-    let parsedExternalLinks: { label: string; url: string }[] = [];
+    let parsedExternalLinks: { label: string; url: string; id?: string }[] = [];
     if (externalLinksRaw) {
-      parsedExternalLinks = JSON.parse(externalLinksRaw).filter((l: any) => l.url?.trim());
+      try {
+        parsedExternalLinks = JSON.parse(externalLinksRaw).filter((l: any) => l.url?.trim());
+      } catch (e) {
+        console.error("Failed to parse externalLinks json", e);
+      }
     } else if (legacyExternalLink) {
       parsedExternalLinks = [{ label: "External Link", url: legacyExternalLink }];
     }
-    resourceData.externalLinks = parsedExternalLinks;
+
+    // Create new externalLinks objects omitting internal tracking IDs
+    resourceData.externalLinks = parsedExternalLinks.map(l => ({
+      label: l.label,
+      url: l.url
+    }));
 
     // Legacy fileData for BC (use first file if present)
     if (processedFiles.length > 0) {

@@ -22,6 +22,7 @@ interface Resource {
   bannerImageUrl?: string;
   subjectId: Subject;
   fileData?: { fileType: string; fileName?: string };
+  files?: Array<{ fileType: string; fileName?: string }>;
   averageRating?: number | string;
   totalRatings?: number;
   createdBy?: { clerkId: string };
@@ -31,6 +32,7 @@ export default function HomePage() {
   const [resources, setResources] = useState<Resource[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [activeType, setActiveType] = useState<string | null>(null);
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
@@ -46,12 +48,18 @@ export default function HomePage() {
       const res = await fetch(`/api/resources?${params}`);
       const data = await res.json();
       setResources(data.resources || []);
+
+      // Fetch user profile for favorites/likes if we don't have it
+      if (!currentUser) {
+        const userRes = await fetch("/api/users/me");
+        if (userRes.ok) setCurrentUser(await userRes.json());
+      }
     } catch (error) {
       console.error("Failed to fetch resources:", error);
     } finally {
       setLoading(false);
     }
-  }, [search, activeType, activeSubject]);
+  }, [search, activeType, activeSubject, currentUser]);
 
   const fetchSubjects = async () => {
     try {
@@ -223,11 +231,14 @@ export default function HomePage() {
                   subjectName={resource.subjectId?.name || "Unknown Subject"}
                   hasFile={
                     resource.fileData?.fileType === "pdf" ||
-                    resource.fileData?.fileType === "image"
+                    resource.fileData?.fileType === "image" ||
+                    (resource.files && resource.files.length > 0)
                   }
                   resourceAuthorId={resource.createdBy?.clerkId}
                   averageRating={resource.averageRating}
                   totalRatings={resource.totalRatings}
+                  isFavorite={currentUser?.favoriteResources?.includes(resource._id)}
+                  isLiked={currentUser?.likedResources?.includes(resource._id)}
                 />
               </motion.div>
             ))}

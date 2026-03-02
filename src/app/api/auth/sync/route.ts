@@ -79,8 +79,8 @@ export async function POST() {
         user.role = "superAdmin";
         hasChanges = true;
       }
-      // Only update userImage if customAvatar not set
-      if (!user.customAvatar && user.userImage !== resolvedImage) {
+      // Only update userImage if user specifically updated it on Google
+      if (user.userImage !== resolvedImage && resolvedImage !== DEFAULT_AVATAR && !user.customAvatar) {
         user.userImage = resolvedImage;
         hasChanges = true;
       }
