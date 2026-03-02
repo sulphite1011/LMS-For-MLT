@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
+import { CommentSection } from "@/components/comments/CommentSection";
 import { DetailSkeleton } from "@/components/ui/Skeleton";
 import { getYoutubeEmbedUrl } from "@/lib/utils";
 import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
@@ -337,6 +338,15 @@ export default function ResourceDetailClient({ id }: { id: string }) {
               </div>
             )}
           </div>
+        </motion.div>
+
+        {/* Comment Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <CommentSection resourceId={resource._id} />
         </motion.div>
 
         {/* Related Resources */}

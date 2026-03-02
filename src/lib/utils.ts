@@ -51,3 +51,19 @@ export const MAX_FILE_SIZE = parseInt(
   process.env.MAX_FILE_SIZE || "10485760",
   10
 );
+
+export function formatDistanceToNow(date: Date | string): string {
+  const diff = (new Date(date).getTime() - new Date().getTime()) / 1000;
+  const absDiff = Math.abs(diff);
+
+  if (absDiff < 60) return "just now";
+
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "always" });
+
+  if (absDiff < 3600) return rtf.format(Math.round(diff / 60), "minute");
+  if (absDiff < 86400) return rtf.format(Math.round(diff / 3600), "hour");
+  if (absDiff < 2592000) return rtf.format(Math.round(diff / 86400), "day");
+  if (absDiff < 31536000) return rtf.format(Math.round(diff / 2592000), "month");
+  return rtf.format(Math.round(diff / 31536000), "year");
+}
+

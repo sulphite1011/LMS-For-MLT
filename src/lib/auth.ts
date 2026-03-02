@@ -57,6 +57,7 @@ export async function syncUser() {
         user = await User.create({
           clerkId: userId,
           username: clerkUser.username || clerkUser.firstName || `user_${userId.slice(-5)}`,
+          userImage: clerkUser.imageUrl,
           role: isHamad ? "superAdmin" : "user",
         });
       } catch (createError: any) {
@@ -65,6 +66,7 @@ export async function syncUser() {
           user = await User.create({
             clerkId: userId,
             username: `${clerkUser.username || clerkUser.firstName || "user"}_${userId.slice(-5)}`,
+            userImage: clerkUser.imageUrl,
             role: isHamad ? "superAdmin" : "user",
           });
         } else {
@@ -74,6 +76,10 @@ export async function syncUser() {
       console.log(`[Lib Sync] Created user: ${user.username} with role: ${user.role}`);
     } else {
       console.log(`[Lib Sync] User exists: ${user.username}, Role: ${user.role}`);
+      if (user.userImage !== clerkUser.imageUrl) {
+        user.userImage = clerkUser.imageUrl;
+        await user.save();
+      }
       if (isHamad && user.role !== "superAdmin") {
         console.log(`[Lib Sync] Forcing superAdmin role for Hamad`);
         user.role = "superAdmin";
