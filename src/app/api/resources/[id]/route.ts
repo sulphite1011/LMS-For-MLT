@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
 import Subject from "@/models/Subject";
+import Comment from "@/models/Comment";
 import { requireAdmin } from "@/lib/auth";
 
 export async function GET(
@@ -24,7 +25,18 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(resource);
+    // Fetch rating stats
+    const ratedComments = await Comment.find({ resourceId: id, rating: { $exists: true } });
+    const totalRatings = ratedComments.length;
+    const averageRating = totalRatings > 0
+      ? (ratedComments.reduce((acc, c) => acc + (c.rating || 0), 0) / totalRatings).toFixed(1)
+      : 0;
+
+    return NextResponse.json({
+      ...resource,
+      averageRating,
+      totalRatings
+    });
   } catch (error) {
     console.error("GET /api/resources/[id] error:", error);
     return NextResponse.json(

@@ -22,6 +22,8 @@ interface Resource {
   bannerImageUrl?: string;
   subjectId: Subject;
   fileData?: { fileType: string; fileName?: string };
+  averageRating?: number | string;
+  totalRatings?: number;
 }
 
 export default function HomePage() {
@@ -223,6 +225,8 @@ export default function HomePage() {
                     resource.fileData?.fileType === "pdf" ||
                     resource.fileData?.fileType === "image"
                   }
+                  averageRating={resource.averageRating}
+                  totalRatings={resource.totalRatings}
                 />
               </motion.div>
             ))}

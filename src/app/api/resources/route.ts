@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
 import Subject from "@/models/Subject";
+import Comment from "@/models/Comment";
 import { requireAdmin, getAuthUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
@@ -51,8 +52,30 @@ export async function GET(req: NextRequest) {
       Resource.countDocuments(filter),
     ]);
 
+    // Fetch rating stats for all resources
+    const resourceIds = resources.map(r => r._id);
+    const ratingStats = await Comment.aggregate([
+      { $match: { resourceId: { $in: resourceIds }, rating: { $exists: true } } },
+      {
+        $group: {
+          _id: "$resourceId",
+          averageRating: { $avg: "$rating" },
+          totalRatings: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const resourcesWithRatings = resources.map(resource => {
+      const stats = ratingStats.find(s => s._id.toString() === resource._id.toString());
+      return {
+        ...resource,
+        averageRating: stats ? stats.averageRating.toFixed(1) : 0,
+        totalRatings: stats ? stats.totalRatings : 0
+      };
+    });
+
     return NextResponse.json({
-      resources,
+      resources: resourcesWithRatings,
       total,
       pages: Math.ceil(total / limit),
       page,

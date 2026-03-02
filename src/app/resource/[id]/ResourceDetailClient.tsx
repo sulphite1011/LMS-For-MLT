@@ -11,6 +11,7 @@ import {
   FileText,
   Play,
   Calendar,
+  Star,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
@@ -39,6 +40,8 @@ interface Resource {
   };
   youtubeUrls: string[];
   createdAt: string;
+  averageRating?: number | string;
+  totalRatings?: number;
 }
 
 export default function ResourceDetailClient({ id }: { id: string }) {
@@ -152,10 +155,17 @@ export default function ResourceDetailClient({ id }: { id: string }) {
             >
               {resource.resourceType}
             </span>
-            <span className="text-gray-400 text-sm flex items-center gap-1.5">
+            <span className="text-gray-400 text-sm flex items-center gap-1.5 border-l border-white/20 pl-3">
               <BookOpen className="w-3.5 h-3.5" />
               {resource.subjectId?.name}
             </span>
+            {resource.totalRatings && resource.totalRatings > 0 && (
+              <span className="text-yellow-400 text-sm font-semibold flex items-center gap-1.5 border-l border-white/20 pl-3">
+                <Star className="w-4 h-4 fill-current" />
+                {resource.averageRating}
+                <span className="text-gray-400 font-normal">({resource.totalRatings})</span>
+              </span>
+            )}
           </div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}

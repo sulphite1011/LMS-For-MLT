@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { BookOpen, FileText, Video, FileCheck, HelpCircle, BookMarked } from "lucide-react";
+import { BookOpen, FileText, Video, FileCheck, HelpCircle, BookMarked, Star } from "lucide-react";
 import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
 
 interface ResourceCardProps {
@@ -13,6 +13,8 @@ interface ResourceCardProps {
   bannerImageUrl?: string;
   subjectName: string;
   hasFile?: boolean;
+  averageRating?: number | string;
+  totalRatings?: number;
 }
 
 const typeIcons: Record<ResourceType, React.ReactNode> = {
@@ -31,6 +33,8 @@ export function ResourceCard({
   bannerImageUrl,
   subjectName,
   hasFile,
+  averageRating,
+  totalRatings,
 }: ResourceCardProps) {
   return (
     <motion.div
@@ -95,6 +99,18 @@ export function ResourceCard({
               <p className="text-sm text-gray-500 line-clamp-2 flex-1">
                 {description}
               </p>
+            )}
+
+            {totalRatings !== undefined && totalRatings > 0 && (
+              <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold">
+                <div className="flex items-center gap-1 text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-md">
+                  <Star className="w-3 h-3 fill-current" />
+                  {averageRating}
+                </div>
+                <span className="text-gray-400 font-normal">
+                  ({totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'})
+                </span>
+              </div>
             )}
           </div>
         </div>
