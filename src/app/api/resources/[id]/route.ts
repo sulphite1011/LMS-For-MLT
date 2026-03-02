@@ -16,7 +16,7 @@ export async function GET(
     const { id } = await params;
 
     const resource = await Resource.findById(id)
-      .select("-fileData.fileContent -bannerImageData")
+      .select("-fileData.fileContent -bannerImageData -files.fileContent")
       .populate("subjectId", "name")
       .populate("createdBy", "clerkId")
       .lean();

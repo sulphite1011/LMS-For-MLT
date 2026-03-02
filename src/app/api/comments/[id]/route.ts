@@ -52,7 +52,7 @@ export async function PATCH(
       }
       comment.replies.push({
         userId: user.clerkId,
-        userName: user.username,
+        userName: user.userHandle || user.username,
         userImage: user.customAvatar || user.userImage || "/images/default-avatar.png",
         content,
         likes: [],

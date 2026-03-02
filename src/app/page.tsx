@@ -69,8 +69,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const debounce = setTimeout(fetchResources, 300);
-    return () => clearTimeout(debounce);
+    fetchResources();
   }, [fetchResources]);
 
   return (

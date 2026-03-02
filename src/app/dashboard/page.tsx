@@ -141,10 +141,13 @@ export default function DashboardPage() {
       let customAvatar: string | undefined;
 
       if (avatarFile) {
-        // Convert to base64
-        const buffer = await avatarFile.arrayBuffer();
-        const base64 = `data:${avatarFile.type};base64,${Buffer.from(buffer).toString("base64")}`;
-        customAvatar = base64;
+        // Convert to base64 using FileReader (browser-safe)
+        customAvatar = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(avatarFile);
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (error) => reject(error);
+        });
       }
 
       const res = await fetch("/api/users/me", {

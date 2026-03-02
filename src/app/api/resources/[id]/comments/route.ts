@@ -48,8 +48,8 @@ export async function POST(
     const newComment = await Comment.create({
       resourceId: new mongoose.Types.ObjectId(id),
       userId: user.clerkId,
-      userName: user.username,
-      userImage: user.userImage,
+      userName: user.userHandle || user.username,
+      userImage: user.customAvatar || user.userImage || "/images/default-avatar.png",
       content,
       rating: rating || undefined,
       likes: [],
