@@ -173,7 +173,7 @@ export function CommentSection({ resourceId }: { resourceId: string }) {
               <button
                 type="submit"
                 disabled={submitting || !content.trim()}
-                className="bg-teal hover:bg-teal-dark disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg shadow-teal/10 transition-all flex items-center gap-2"
+                className="w-full sm:w-auto bg-teal hover:bg-teal-dark disabled:opacity-50 text-white font-semibold px-6 md:px-8 py-3 rounded-2xl shadow-lg shadow-teal/10 transition-all flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

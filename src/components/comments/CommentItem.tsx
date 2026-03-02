@@ -64,7 +64,9 @@ export function CommentItem({ comment, onLike, onReply, isReply = false }: Comme
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`group ${isReply ? "ml-12 mt-4" : "bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100"}`}
+      className={`group ${isReply
+        ? "ml-6 md:ml-12 mt-4"
+        : "bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100"}`}
     >
       <div className="flex gap-4">
         {/* Avatar */}
@@ -122,18 +124,18 @@ export function CommentItem({ comment, onLike, onReply, isReply = false }: Comme
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden mt-4"
               >
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                   <input
                     type="text"
                     value={replyContent}
                     onChange={(e) => setReplyContent(e.target.value)}
                     placeholder="Write a reply..."
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-teal/50"
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-teal/50 min-w-0"
                   />
                   <button
                     onClick={handleReplySubmit}
                     disabled={!replyContent.trim()}
-                    className="p-2 bg-teal text-white rounded-xl disabled:opacity-50 hover:bg-teal-dark transition-colors"
+                    className="p-2.5 bg-teal text-white rounded-xl disabled:opacity-50 hover:bg-teal-dark transition-colors shrink-0 shadow-lg shadow-teal/10"
                   >
                     <Send className="w-4 h-4" />
                   </button>
