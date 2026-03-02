@@ -46,12 +46,20 @@ export function Navbar() {
                   Dashboard
                 </Link>
               ) : (
-                <a
-                  href="mailto:hamadkhadimdgkmc@gmail.com?subject=Admin%20Access%20Request&body=Hi%20Hamad,%20I%20would%20like%20to%20request%20admin%20access%20to%20the%20LMS.%20My%20username%20is:%20"
-                  className="text-sm bg-teal/10 text-teal hover:bg-teal/20 px-4 py-2 rounded-full transition-colors font-medium"
-                >
-                  Become Admin
-                </a>
+                <div className="flex flex-col items-end gap-1">
+                  <a
+                    href="mailto:hamadkhadimdgkmc@gmail.com?subject=Admin%20Access%20Request&body=Hi%20Hamad,%20I%20would%20like%20to%20request%20admin%20access%20to%20the%20LMS.%20My%20username%20is:%20"
+                    className="text-sm bg-teal/10 text-teal hover:bg-teal/20 px-4 py-2 rounded-full transition-colors font-medium text-center"
+                  >
+                    Become Admin
+                  </a>
+                  <Link
+                    href="/admin/claim"
+                    className="text-[10px] text-gray-400 hover:text-teal transition-colors pr-2"
+                  >
+                    Have a code? Claim status
+                  </Link>
+                </div>
               )}
               <UserButton
                 afterSignOutUrl="/"
@@ -114,13 +122,22 @@ export function Navbar() {
                 Admin Dashboard
               </Link>
             ) : (
-              <a
-                href="mailto:hamadkhadimdgkmc@gmail.com?subject=Admin%20Access%20Request&body=Hi%20Hamad,%20I%20would%20like%20to%20request%20admin%20access%20to%20the%20LMS.%20My%20username%20is:%20"
-                className="block text-sm text-teal py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Become Admin
-              </a>
+              <div className="space-y-3">
+                <a
+                  href="mailto:hamadkhadimdgkmc@gmail.com?subject=Admin%20Access%20Request&body=Hi%20Hamad,%20I%20would%20like%20to%20request%20admin%20access%20to%20the%20LMS.%20My%20username%20is:%20"
+                  className="block text-sm text-teal py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Become Admin
+                </a>
+                <Link
+                  href="/admin/claim"
+                  className="block text-xs text-gray-400 hover:text-teal"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Have temporary credentials? Claim status
+                </Link>
+              </div>
             )}
           </SignedIn>
           <SignedOut>
