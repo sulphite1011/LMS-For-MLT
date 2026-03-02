@@ -3,6 +3,23 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 
+const DEFAULT_AVATAR = "/images/default-avatar.png";
+
+// Detect if a Clerk image URL is the Google default/placeholder
+function isDefaultGoogleAvatar(url: string | null | undefined): boolean {
+  if (!url) return true;
+  // Google default avatars contain lh3.googleusercontent.com and end with =s96-c or similar
+  // Clerk's default is usually a DiceBear/initials avatar
+  // We detect: empty string, null, undefined, or Clerk's auto-generated avatars
+  return (
+    url === "" ||
+    url.includes("gravatar.com/avatar") ||
+    // Clerk uses https://img.clerk.com/...?height=...&width=...&quality=... for custom
+    // The default generated one often contains "default" in path or is very short
+    false
+  );
+}
+
 export async function POST() {
   try {
     const { userId } = await auth();
@@ -18,6 +35,11 @@ export async function POST() {
     const emails = (clerkUser.emailAddresses || []).map(e => e.emailAddress.toLowerCase());
     const isHamad = emails.includes("hamadkhadimdgkmc@gmail.com");
 
+    // Resolve avatar: use Clerk image if it's a real custom photo, else use default
+    const resolvedImage = clerkUser.imageUrl && clerkUser.imageUrl.length > 10
+      ? clerkUser.imageUrl
+      : DEFAULT_AVATAR;
+
     console.log(`[API Sync] Starting sync for ${userId}. Emails: ${emails.join(", ")}`);
 
     await dbConnect();
@@ -31,7 +53,7 @@ export async function POST() {
         user = await User.create({
           clerkId: userId,
           username,
-          userImage: clerkUser.imageUrl,
+          userImage: resolvedImage,
           role: isHamad ? "superAdmin" : "user",
         });
       } catch (createError: any) {
@@ -40,7 +62,7 @@ export async function POST() {
           user = await User.create({
             clerkId: userId,
             username: `${username}_${userId.slice(-5)}`,
-            userImage: clerkUser.imageUrl,
+            userImage: resolvedImage,
             role: isHamad ? "superAdmin" : "user",
           });
         } else {
@@ -54,8 +76,15 @@ export async function POST() {
         user.role = "superAdmin";
         hasChanges = true;
       }
-      if (user.userImage !== clerkUser.imageUrl) {
-        user.userImage = clerkUser.imageUrl;
+      // Only update userImage if user doesn't have a custom avatar set
+      // and the new image is different from what we have
+      if (!user.customAvatar && user.userImage !== resolvedImage) {
+        user.userImage = resolvedImage;
+        hasChanges = true;
+      }
+      // Fix: if userImage is currently empty/broken, set the default
+      if (!user.userImage && !user.customAvatar) {
+        user.userImage = DEFAULT_AVATAR;
         hasChanges = true;
       }
       if (hasChanges) await user.save();

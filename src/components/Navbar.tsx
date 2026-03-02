@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useAuthState } from "@/contexts/AuthContext";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { BookOpen, LayoutDashboard, Menu, X } from "lucide-react";
+import { BookOpen, LayoutDashboard, Menu, X, User as UserIcon } from "lucide-react";
 import { useState } from "react";
 
 export function Navbar() {
@@ -37,28 +37,24 @@ export function Navbar() {
             <SignedIn>
               {!authLoaded ? (
                 <div className="w-20 h-8 bg-white/5 animate-pulse rounded-full" />
-              ) : (userRole === "superAdmin" || userRole === "admin") ? (
-                <Link
-                  href="/admin"
-                  className="flex items-center gap-2 text-sm bg-teal/10 text-teal hover:bg-teal/20 px-4 py-2 rounded-full transition-colors"
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  Dashboard
-                </Link>
               ) : (
-                <div className="flex flex-col items-end gap-1">
-                  <a
-                    href="mailto:hamadkhadimdgkmc@gmail.com?subject=Admin%20Access%20Request&body=Hi%20Hamad,%20I%20would%20like%20to%20request%20admin%20access%20to%20the%20LMS.%20My%20username%20is:%20"
-                    className="text-sm bg-teal/10 text-teal hover:bg-teal/20 px-4 py-2 rounded-full transition-colors font-medium text-center"
-                  >
-                    Become Admin
-                  </a>
+                <div className="flex items-center gap-2">
                   <Link
-                    href="/admin/claim"
-                    className="text-[10px] text-gray-400 hover:text-teal transition-colors pr-2"
+                    href="/dashboard"
+                    className="flex items-center gap-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 px-3 py-2 rounded-full transition-colors"
                   >
-                    Have a code? Claim status
+                    <UserIcon className="w-4 h-4" />
+                    My Profile
                   </Link>
+                  {(userRole === "superAdmin" || userRole === "admin") && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-2 text-sm bg-teal/10 text-teal hover:bg-teal/20 px-4 py-2 rounded-full transition-colors"
+                    >
+                      <LayoutDashboard className="w-4 h-4" />
+                      Admin
+                    </Link>
+                  )}
                 </div>
               )}
               <UserButton
@@ -111,33 +107,13 @@ export function Navbar() {
             Browse Resources
           </Link>
           <SignedIn>
-            {!authLoaded ? (
-              <div className="h-10 bg-white/5 animate-pulse rounded-full w-full" />
-            ) : (userRole === "superAdmin" || userRole === "admin") ? (
-              <Link
-                href="/admin"
-                className="block text-sm text-teal py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
+            <Link href="/dashboard" className="block text-sm text-gray-300 hover:text-white py-2" onClick={() => setMobileMenuOpen(false)}>
+              My Profile
+            </Link>
+            {(userRole === "superAdmin" || userRole === "admin") && (
+              <Link href="/admin" className="block text-sm text-teal py-2" onClick={() => setMobileMenuOpen(false)}>
                 Admin Dashboard
               </Link>
-            ) : (
-              <div className="space-y-3">
-                <a
-                  href="mailto:hamadkhadimdgkmc@gmail.com?subject=Admin%20Access%20Request&body=Hi%20Hamad,%20I%20would%20like%20to%20request%20admin%20access%20to%20the%20LMS.%20My%20username%20is:%20"
-                  className="block text-sm text-teal py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Become Admin
-                </a>
-                <Link
-                  href="/admin/claim"
-                  className="block text-xs text-gray-400 hover:text-teal"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Have temporary credentials? Claim status
-                </Link>
-              </div>
             )}
           </SignedIn>
           <SignedOut>

@@ -15,7 +15,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { action, content, replyIndex } = await req.json();
+    const { action, content, replyIndex, parentReplyId, mentionedUser } = await req.json();
     await dbConnect();
 
     const comment = await Comment.findById(id);
@@ -53,9 +53,11 @@ export async function PATCH(
       comment.replies.push({
         userId: user.clerkId,
         userName: user.username,
-        userImage: user.userImage,
+        userImage: user.customAvatar || user.userImage || "/images/default-avatar.png",
         content,
         likes: [],
+        parentReplyId: parentReplyId || undefined,
+        mentionedUser: mentionedUser || undefined,
         createdAt: new Date(),
       });
       await comment.save();

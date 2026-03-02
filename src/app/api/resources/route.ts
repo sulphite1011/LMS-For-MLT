@@ -27,14 +27,9 @@ export async function GET(req: NextRequest) {
         { description: { $regex: search, $options: "i" } },
       ];
     }
-    if (type) {
-      filter.resourceType = type;
-    }
-    if (subject) {
-      filter.subjectId = subject;
-    }
+    if (type) filter.resourceType = type;
+    if (subject) filter.subjectId = subject;
 
-    // If it's the admin dashboard, filter by ownership unless superAdmin
     if (isAdminDashboard) {
       const currentUser = await getAuthUser();
       if (currentUser?.role === "admin") {
@@ -44,7 +39,7 @@ export async function GET(req: NextRequest) {
 
     const [resources, total] = await Promise.all([
       Resource.find(filter)
-        .select("-fileData.fileContent -bannerImageData")
+        .select("-fileData.fileContent -bannerImageData -files.fileContent")
         .populate("subjectId", "name")
         .populate("createdBy", "clerkId")
         .sort({ createdAt: -1 })
@@ -54,27 +49,14 @@ export async function GET(req: NextRequest) {
       Resource.countDocuments(filter),
     ]);
 
-    // Fast return if no resources found
     if (resources.length === 0) {
-      return NextResponse.json({
-        resources: [],
-        total: 0,
-        pages: 0,
-        page,
-      });
+      return NextResponse.json({ resources: [], total: 0, pages: 0, page });
     }
 
-    // Fetch rating stats for all resources with robust Type checking
     const resourceIds = resources.map(r => new mongoose.Types.ObjectId(String(r._id)));
     const ratingStats = await Comment.aggregate([
-      { $match: { resourceId: { $in: resourceIds }, rating: { $exists: true } } },
-      {
-        $group: {
-          _id: "$resourceId",
-          averageRating: { $avg: "$rating" },
-          totalRatings: { $sum: 1 }
-        }
-      }
+      { $match: { resourceId: { $in: resourceIds }, rating: { $exists: true, $gt: 0 } } },
+      { $group: { _id: "$resourceId", averageRating: { $avg: "$rating" }, totalRatings: { $sum: 1 } } }
     ]);
 
     const resourcesWithRatings = resources.map(resource => {
@@ -86,18 +68,10 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({
-      resources: resourcesWithRatings,
-      total,
-      pages: Math.ceil(total / limit),
-      page,
-    });
+    return NextResponse.json({ resources: resourcesWithRatings, total, pages: Math.ceil(total / limit), page });
   } catch (error) {
     console.error("GET /api/resources error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch resources" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch resources" }, { status: 500 });
   }
 }
 
@@ -112,9 +86,15 @@ export async function POST(req: NextRequest) {
     const description = formData.get("description") as string;
     const youtubeUrlsRaw = formData.get("youtubeUrls") as string;
     const bannerImageUrl = formData.get("bannerImageUrl") as string;
-    const externalLink = formData.get("externalLink") as string;
-    const file = formData.get("file") as File | null;
+    const externalLinksRaw = formData.get("externalLinks") as string;
+    // Legacy single external link
+    const legacyExternalLink = formData.get("externalLink") as string;
     const bannerFile = formData.get("bannerImage") as File | null;
+
+    // Multiple file uploads
+    const files = formData.getAll("files") as File[];
+    // Legacy single file
+    const legacyFile = formData.get("file") as File | null;
 
     if (!title || !subjectName || !resourceType) {
       return NextResponse.json(
@@ -123,13 +103,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const youtubeUrls = youtubeUrlsRaw
-      ? JSON.parse(youtubeUrlsRaw).filter(Boolean)
-      : [];
+    const youtubeUrls = youtubeUrlsRaw ? JSON.parse(youtubeUrlsRaw).filter(Boolean) : [];
 
     await dbConnect();
 
-    // Find or create subject by name (case-insensitive)
     const subject = await Subject.findOneAndUpdate(
       { name: { $regex: new RegExp(`^${subjectName}$`, "i") } },
       { $setOnInsert: { name: subjectName, createdBy: user._id } },
@@ -144,38 +121,51 @@ export async function POST(req: NextRequest) {
       youtubeUrls,
       bannerImageUrl: bannerImageUrl || "",
       createdBy: user._id,
+      files: [],
+      externalLinks: [],
     };
 
-    // Handle banner image upload
     if (bannerFile && bannerFile.size > 0) {
       const bannerBuffer = Buffer.from(await bannerFile.arrayBuffer());
       const bannerBase64 = `data:${bannerFile.type};base64,${bannerBuffer.toString("base64")}`;
       resourceData.bannerImageUrl = bannerBase64;
     }
 
-    // Handle file upload
-    if (file && file.size > 0) {
-      const maxSize = parseInt(process.env.MAX_FILE_SIZE || "10485760");
-      if (file.size > maxSize) {
-        return NextResponse.json(
-          { error: "File size exceeds 10MB limit" },
-          { status: 400 }
-        );
-      }
+    // Handle multiple files
+    const maxSize = parseInt(process.env.MAX_FILE_SIZE || "10485760");
+    const processedFiles = [];
+    const allFiles = files.length > 0 ? files : (legacyFile ? [legacyFile] : []);
 
+    for (const file of allFiles) {
+      if (!file || file.size === 0) continue;
+      if (file.size > maxSize) {
+        return NextResponse.json({ error: `File "${file.name}" exceeds 10MB limit` }, { status: 400 });
+      }
       const buffer = Buffer.from(await file.arrayBuffer());
-      resourceData.fileData = {
+      processedFiles.push({
         fileType: file.type.includes("pdf") ? "pdf" : "image",
         fileContent: buffer,
         fileName: file.name,
         fileSize: file.size,
         mimeType: file.type,
-      };
-    } else if (externalLink) {
-      resourceData.fileData = {
-        fileType: "external",
-        externalLink,
-      };
+      });
+    }
+    resourceData.files = processedFiles;
+
+    // Handle external links
+    let parsedExternalLinks: { label: string; url: string }[] = [];
+    if (externalLinksRaw) {
+      parsedExternalLinks = JSON.parse(externalLinksRaw).filter((l: any) => l.url?.trim());
+    } else if (legacyExternalLink) {
+      parsedExternalLinks = [{ label: "External Link", url: legacyExternalLink }];
+    }
+    resourceData.externalLinks = parsedExternalLinks;
+
+    // Legacy fileData for BC (use first file if present)
+    if (processedFiles.length > 0) {
+      resourceData.fileData = processedFiles[0];
+    } else if (parsedExternalLinks.length > 0) {
+      resourceData.fileData = { fileType: "external", externalLink: parsedExternalLinks[0].url };
     }
 
     const resource = await Resource.create(resourceData);
@@ -186,13 +176,8 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: unknown) {
     console.error("POST /api/resources error:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to create resource";
-    const status = message.includes("Unauthorized")
-      ? 401
-      : message.includes("Forbidden")
-        ? 403
-        : 500;
+    const message = error instanceof Error ? error.message : "Failed to create resource";
+    const status = message.includes("Unauthorized") ? 401 : message.includes("Forbidden") ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

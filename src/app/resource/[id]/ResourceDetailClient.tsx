@@ -25,6 +25,19 @@ interface Subject {
   name: string;
 }
 
+interface FileEntry {
+  fileType: string;
+  fileName?: string;
+  fileSize?: number;
+  externalLink?: string;
+  label?: string;
+}
+
+interface ExternalLink {
+  label: string;
+  url: string;
+}
+
 interface Resource {
   _id: string;
   title: string;
@@ -32,12 +45,9 @@ interface Resource {
   resourceType: ResourceType;
   bannerImageUrl?: string;
   subjectId: Subject;
-  fileData?: {
-    fileType: string;
-    fileName?: string;
-    fileSize?: number;
-    externalLink?: string;
-  };
+  fileData?: FileEntry; // legacy single file
+  files?: FileEntry[];  // new multiple files
+  externalLinks?: ExternalLink[]; // new multiple external links
   youtubeUrls: string[];
   createdAt: string;
   createdBy: { _id: string; clerkId: string };
@@ -282,46 +292,68 @@ export default function ResourceDetailClient({ id }: { id: string }) {
 
           {/* Right - Actions */}
           <div className="space-y-4">
-            {/* PDF / File Access */}
-            {resource.fileData && (
+            {/* Multiple PDFs / Files */}
+            {((resource.files && resource.files.length > 0) || resource.fileData) && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h3 className="font-semibold text-text-primary mb-4">
-                  Access Material
-                </h3>
-                {resource.fileData.fileType === "external" &&
-                  resource.fileData.externalLink ? (
-                  <a
-                    href={resource.fileData.externalLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20"
-                    suppressHydrationWarning
-                  >
-                    <ExternalLink className="w-5 h-5" />
-                    Open External Link
-                  </a>
-                ) : (
-                  <div className="space-y-3">
-                    <a
-                      href={`/api/resources/${resource._id}/file`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20"
-                      suppressHydrationWarning
-                    >
-                      <FileText className="w-5 h-5" />
-                      View PDF
+                <h3 className="font-semibold text-text-primary mb-4">Access Material</h3>
+                <div className="space-y-3">
+                  {/* New multiple files */}
+                  {resource.files && resource.files.length > 0 ? (
+                    resource.files.map((f, i) => (
+                      <div key={i} className="space-y-2">
+                        {f.label && <p className="text-xs text-gray-500 font-medium">{f.label || f.fileName}</p>}
+                        <a
+                          href={`/api/resources/${resource._id}/file?index=${i}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20 text-sm"
+                          suppressHydrationWarning
+                        >
+                          <FileText className="w-4 h-4" />
+                          {f.fileName ? `View ${f.fileName}` : `View PDF ${resource.files!.length > 1 ? i + 1 : ""}`}
+                        </a>
+                        <a
+                          href={`/api/resources/${resource._id}/file?index=${i}`}
+                          download
+                          className="flex items-center justify-center gap-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-medium transition-colors text-sm"
+                        >
+                          <Download className="w-4 h-4" /> Download
+                        </a>
+                      </div>
+                    ))
+                  ) : resource.fileData ? (
+                    /* Legacy single file */
+                    resource.fileData.fileType === "external" && resource.fileData.externalLink ? (
+                      <a href={resource.fileData.externalLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20" suppressHydrationWarning>
+                        <ExternalLink className="w-5 h-5" /> Open External Link
+                      </a>
+                    ) : (
+                      <div className="space-y-3">
+                        <a href={`/api/resources/${resource._id}/file`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20" suppressHydrationWarning>
+                          <FileText className="w-5 h-5" /> View PDF
+                        </a>
+                        <a href={`/api/resources/${resource._id}/file`} download className="flex items-center justify-center gap-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium transition-colors">
+                          <Download className="w-4 h-4" /> Download
+                        </a>
+                      </div>
+                    )
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {/* External Links (non-YouTube) */}
+            {resource.externalLinks && resource.externalLinks.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <h3 className="font-semibold text-text-primary mb-3">External Links</h3>
+                <div className="space-y-2">
+                  {resource.externalLinks.map((link, i) => (
+                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full bg-gray-50 hover:bg-teal/5 border border-gray-200 hover:border-teal/30 text-gray-700 hover:text-teal py-2.5 px-4 rounded-xl font-medium transition-all text-sm">
+                      <ExternalLink className="w-4 h-4 shrink-0" />
+                      <span className="flex-1 truncate">{link.label || "External Link"}</span>
                     </a>
-                    <a
-                      href={`/api/resources/${resource._id}/file`}
-                      download
-                      className="flex items-center justify-center gap-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download
-                    </a>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
             )}
 

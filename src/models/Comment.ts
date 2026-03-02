@@ -1,11 +1,14 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IReply {
+  _id?: mongoose.Types.ObjectId;
   userId: string;
   userName: string;
   userImage?: string;
   content: string;
   likes: string[]; // Array of Clerk IDs
+  parentReplyId?: string; // for reply-to-reply threading
+  mentionedUser?: string; // @mentioned username
   createdAt: Date;
 }
 
@@ -15,7 +18,7 @@ export interface ICommentDoc extends Document {
   userName: string;
   userImage?: string;
   content: string;
-  rating?: number; // 1-5
+  rating?: number; // 1-5 — can exist standalone (empty content) for standalone ratings
   likes: string[]; // Array of Clerk IDs
   replies: IReply[];
   createdAt: Date;
@@ -28,6 +31,8 @@ const ReplySchema = new Schema<IReply>({
   userImage: { type: String },
   content: { type: String, required: true },
   likes: [{ type: String }],
+  parentReplyId: { type: String }, // ID of the parent reply (for threaded replies)
+  mentionedUser: { type: String }, // @mentioned username
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -37,7 +42,7 @@ const CommentSchema = new Schema<ICommentDoc>(
     userId: { type: String, required: true },
     userName: { type: String, required: true },
     userImage: { type: String },
-    content: { type: String, required: true },
+    content: { type: String, default: "" }, // Can be empty for standalone ratings
     rating: { type: Number, min: 1, max: 5 },
     likes: [{ type: String }],
     replies: [ReplySchema],
@@ -50,6 +55,7 @@ const CommentSchema = new Schema<ICommentDoc>(
 // Indexes for performance
 CommentSchema.index({ resourceId: 1 });
 CommentSchema.index({ createdAt: -1 });
+CommentSchema.index({ userId: 1 }); // for user dashboard activity
 
 const Comment: Model<ICommentDoc> =
   mongoose.models.Comment || mongoose.model<ICommentDoc>("Comment", CommentSchema);
