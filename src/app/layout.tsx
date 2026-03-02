@@ -18,6 +18,14 @@ export const metadata: Metadata = {
   description:
     "Your complete Medical Laboratory Technology resource library. Access notes, videos, PDFs, and more.",
   keywords: ["MLT", "Medical Laboratory Technology", "Study", "Resources", "LMS"],
+  // Add Google verification meta tag here
+  verification: {
+    google: "J7pJjyMwoeQK6XCpWQvxWltPw5NODQ1to-0XCzoB5Ng",
+  },
+  // Add canonical URL
+  alternates: {
+    canonical: "https://lms-for-mlt.vercel.app",
+  },
 };
 
 export default function RootLayout({
