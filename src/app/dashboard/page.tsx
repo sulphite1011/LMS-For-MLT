@@ -396,11 +396,11 @@ export default function DashboardPage() {
                   </div>
                 </dl>
               </div>
-
+{/* 
               <div className="bg-linear-to-br from-teal/5 to-teal/10 rounded-2xl p-6 border border-teal/20">
                 <h3 className="font-semibold text-teal text-sm mb-2">How to edit your profile</h3>
                 <p className="text-slate-600 text-sm">Click the <strong className="text-slate-800">Edit Profile</strong> button at the top to update your username, bio, and profile picture.</p>
-              </div>
+              </div> */}
             </motion.div>
           )}
 
