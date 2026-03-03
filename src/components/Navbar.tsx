@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useAuthState } from "@/contexts/AuthContext";
-import { SignedIn, SignedOut, UserButton, SignOutButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { BookOpen, LayoutDashboard, Menu, X, User as UserIcon, LogOut } from "lucide-react";
+import { BookOpen, LayoutDashboard, Menu, X, User as UserIcon } from "lucide-react";
 import { useState } from "react";
 
 export function Navbar() {
@@ -115,17 +115,6 @@ export function Navbar() {
                 Admin Dashboard
               </Link>
             )}
-            <div className="pt-2 mt-2 border-t border-white/10">
-              <SignOutButton signOutOptions={{ redirectUrl: "/" }}>
-                <button
-                  className="flex items-center gap-2 w-full text-sm text-red-400 hover:text-red-300 py-2 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </button>
-              </SignOutButton>
-            </div>
           </SignedIn>
           <SignedOut>
             <Link

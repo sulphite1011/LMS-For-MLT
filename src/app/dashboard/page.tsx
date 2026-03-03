@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useUser, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
+import { useUser, SignedIn, SignedOut, RedirectToSignIn, SignOutButton } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import {
   User as UserIcon, Heart, Bookmark, MessageSquare, Edit3, Save, X,
   Camera, Loader2, BookOpen, Star, ChevronRight, ExternalLink,
-  FileText, Play, Award, Activity
+  FileText, Play, Award, Activity, LogOut
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
@@ -395,8 +395,21 @@ export default function DashboardPage() {
                     <dd className="text-sm font-medium text-slate-900">{profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : ""}</dd>
                   </div>
                 </dl>
+
+                {/* Sign Out Section */}
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                  <SignOutButton signOutOptions={{ redirectUrl: "/" }}>
+                    <button className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-semibold text-sm shadow-sm hover:shadow-md">
+                      <LogOut className="w-4 h-4" />
+                      Sign Out from Account
+                    </button>
+                  </SignOutButton>
+                  <p className="mt-2 text-[10px] text-slate-400 px-1 italic">
+                    You will be redirected to the home page after signing out.
+                  </p>
+                </div>
               </div>
-{/* 
+              {/* 
               <div className="bg-linear-to-br from-teal/5 to-teal/10 rounded-2xl p-6 border border-teal/20">
                 <h3 className="font-semibold text-teal text-sm mb-2">How to edit your profile</h3>
                 <p className="text-slate-600 text-sm">Click the <strong className="text-slate-800">Edit Profile</strong> button at the top to update your username, bio, and profile picture.</p>

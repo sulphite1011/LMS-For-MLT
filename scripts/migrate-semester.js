@@ -33,7 +33,7 @@ async function migrate() {
     // For now, assign semester 1 to all resources that don't have one
     const result = await Resource.updateMany(
       { semester: { $exists: false } },
-      { $set: { semester: 1 } }
+      { $set: { semester: 4 } }
     );
 
     console.log(`Updated ${result.modifiedCount} resources to Semester 1.`);
