@@ -77,6 +77,7 @@ export async function PUT(
     const externalLink = formData.get("externalLink") as string;
     const file = formData.get("file") as File | null;
     const bannerFile = formData.get("bannerImage") as File | null;
+    const semester = parseInt(formData.get("semester") as string || "0");
     const removeFile = formData.get("removeFile") === "true";
 
     if (!title || !subjectName || !resourceType) {
@@ -104,6 +105,7 @@ export async function PUT(
       subjectId: subject._id,
       resourceType,
       description: description?.trim() || "",
+      semester: semester > 0 ? semester : undefined,
       youtubeUrls,
     };
 

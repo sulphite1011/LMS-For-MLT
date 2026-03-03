@@ -23,6 +23,7 @@ interface Resource {
   files?: Array<{ fileType: string; fileName?: string }>;
   averageRating?: number | string;
   totalRatings?: number;
+  semester?: number;
   createdBy?: { clerkId: string };
 }
 
@@ -72,26 +73,28 @@ export default function HomeClient({
     fetchResources();
   }, [fetchResources, search, activeType, activeSubject]);
 
-  // Helper to group resources for the "All" view
+  // Helper to group resources for the "All" view with Semester Segregation
   const getGroupedContent = () => {
     const groups: Record<string, Resource[]> = {};
 
-    // Group by Type first
-    const types = ["PDF", "Video", "Notes", "Reference"];
-    types.forEach(type => {
-      const filtered = resources.filter(r => (r.resourceType || (r as any).sourceType) === type);
-      if (filtered.length > 0) {
-        groups[`Type: ${type}`] = filtered.slice(0, 8);
-      }
-    });
+    // Group by Semester (1-10)
+    for (let s = 1; s <= 10; s++) {
+      const semesterResources = resources.filter(r => r.semester === s);
+      if (semesterResources.length === 0) continue;
 
-    // Group by Subject
-    subjects.forEach(subject => {
-      const filtered = resources.filter(r => r.subjectId?._id === subject._id);
-      if (filtered.length > 0) {
-        groups[`Subject: ${subject.name}`] = filtered.slice(0, 8);
-      }
-    });
+      const semKey = `Semester ${s}`;
+      groups[semKey] = semesterResources;
+
+      // Sub-grouping within Semester (Optional: if we want to show specific sub-sections)
+      // For now, let's keep it simple and just show the semester group
+      // The user said "first line segregation... based on semester"
+    }
+
+    // Handle resources without a semester (Legacy/General)
+    const generalResources = resources.filter(r => !r.semester);
+    if (generalResources.length > 0) {
+      groups["General / Other Resources"] = generalResources;
+    }
 
     return groups;
   };

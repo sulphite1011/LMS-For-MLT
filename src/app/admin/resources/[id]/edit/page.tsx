@@ -33,6 +33,7 @@ export default function EditResourcePage() {
   const [title, setTitle] = useState("");
   const [subjectName, setSubjectName] = useState("");
   const [resourceType, setResourceType] = useState<string>("");
+  const [semester, setSemester] = useState<string>("");
   const [description, setDescription] = useState("");
   const [youtubeUrls, setYoutubeUrls] = useState<string[]>([""]);
   const [bannerImageUrl, setBannerImageUrl] = useState("");
@@ -50,6 +51,7 @@ export default function EditResourcePage() {
         setTitle(resData.title || "");
         setSubjectName(resData.subjectId?.name || "");
         setResourceType(resData.resourceType || "");
+        setSemester(resData.semester ? String(resData.semester) : "");
         setDescription(resData.description || "");
         setYoutubeUrls(
           resData.youtubeUrls?.length > 0 ? resData.youtubeUrls : [""]
@@ -155,6 +157,7 @@ export default function EditResourcePage() {
       formData.append("title", title);
       formData.append("subjectName", subjectName.trim());
       formData.append("resourceType", resourceType);
+      formData.append("semester", semester);
       formData.append("description", description);
       formData.append(
         "youtubeUrls",
@@ -274,6 +277,21 @@ export default function EditResourcePage() {
                 <option value="">Select type</option>
                 {resourceTypes.map((t) => (
                   <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Semester (Optional)
+              </label>
+              <select
+                value={semester}
+                onChange={(e) => setSemester(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm bg-white"
+              >
+                <option value="">Select semester</option>
+                {[...Array(10)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>Semester {i + 1}</option>
                 ))}
               </select>
             </div>

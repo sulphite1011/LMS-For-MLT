@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search");
     const type = searchParams.get("type");
     const subject = searchParams.get("subject");
+    const semester = searchParams.get("semester");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const isAdminDashboard = searchParams.get("admin") === "true";
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest) {
     }
     if (type) filter.resourceType = type;
     if (subject) filter.subjectId = subject;
+    if (semester) filter.semester = parseInt(semester);
 
     if (isAdminDashboard) {
       const currentUser = await getAuthUser();
@@ -102,6 +104,7 @@ export async function POST(req: NextRequest) {
     const youtubeUrlsRaw = formData.get("youtubeUrls") as string;
     const bannerImageUrl = formData.get("bannerImageUrl") as string;
     const externalLinksRaw = formData.get("externalLinks") as string;
+    const semester = parseInt(formData.get("semester") as string || "0");
     // Legacy single external link
     const legacyExternalLink = formData.get("externalLink") as string;
     const bannerFile = formData.get("bannerImage") as File | null;
@@ -133,6 +136,7 @@ export async function POST(req: NextRequest) {
       subjectId: subject._id,
       resourceType,
       description: description?.trim() || "",
+      semester: semester > 0 ? semester : undefined,
       youtubeUrls,
       bannerImageUrl: bannerImageUrl || "",
       createdBy: user._id,

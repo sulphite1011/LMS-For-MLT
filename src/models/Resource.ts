@@ -29,6 +29,7 @@ export interface IResourceDoc extends mongoose.Document {
   externalLinks: IExternalLink[];
   youtubeUrls: string[];
   description?: string;
+  semester?: number;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -79,6 +80,7 @@ const ResourceSchema = new Schema<IResourceDoc>(
     externalLinks: [ExternalLinkSchema],
     youtubeUrls: [{ type: String }],
     description: { type: String, trim: true },
+    semester: { type: Number, min: 1, max: 10, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   {

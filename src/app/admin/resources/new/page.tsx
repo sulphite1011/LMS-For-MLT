@@ -26,6 +26,7 @@ export default function NewResourcePage() {
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [subjectName, setSubjectName] = useState(""); // for display
+  const [semester, setSemester] = useState("");
   const [resourceType, setResourceType] = useState("");
   const [description, setDescription] = useState("");
   const [youtubeUrls, setYoutubeUrls] = useState<string[]>([""]);
@@ -97,6 +98,7 @@ export default function NewResourcePage() {
       formData.append("title", title);
       formData.append("subjectName", subjectName);
       formData.append("resourceType", resourceType);
+      formData.append("semester", semester);
       formData.append("description", description);
       formData.append("youtubeUrls", JSON.stringify(youtubeUrls.filter(Boolean)));
       formData.append("bannerImageUrl", bannerImageUrl);
@@ -184,6 +186,15 @@ export default function NewResourcePage() {
               <select value={resourceType} onChange={e => setResourceType(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm bg-white" required>
                 <option value="">Select type</option>
                 {resourceTypes.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Semester (Optional)</label>
+              <select value={semester} onChange={e => setSemester(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm bg-white">
+                <option value="">Select semester</option>
+                {[...Array(10)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>Semester {i + 1}</option>
+                ))}
               </select>
             </div>
           </div>
