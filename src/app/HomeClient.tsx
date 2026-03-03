@@ -79,15 +79,13 @@ export default function HomeClient({
     // Group by Type first
     const types = ["PDF", "Video", "Notes", "Reference"];
     types.forEach(type => {
-      const filtered = resources.filter(r => r.resourceType === type);
+      const filtered = resources.filter(r => (r.resourceType || (r as any).sourceType) === type);
       if (filtered.length > 0) {
         groups[`Type: ${type}`] = filtered.slice(0, 8);
       }
     });
 
-    // Group by Subject for remaining or all?
-    // User asked for "custom sections based on subject are not there alongside pdf references videos etc sections"
-    // So let's add Subject sections too
+    // Group by Subject
     subjects.forEach(subject => {
       const filtered = resources.filter(r => r.subjectId?._id === subject._id);
       if (filtered.length > 0) {

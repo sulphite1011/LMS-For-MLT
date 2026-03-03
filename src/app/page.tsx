@@ -20,6 +20,11 @@ import mongoose from "mongoose";
 async function getInitialData() {
   try {
     await dbConnect();
+    // Ensure models are registered before populate
+    // @ts-ignore
+    const _u = User.modelName;
+    // @ts-ignore
+    const _s = Subject.modelName;
 
     const [resources, subjects] = await Promise.all([
       Resource.find({})

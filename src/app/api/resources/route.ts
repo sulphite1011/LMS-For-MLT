@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (resources.length === 0) {
+      console.log("[API /resources] No resources found for filter:", JSON.stringify(filter));
       return NextResponse.json({ resources: [], total: 0, pages: 0, page });
     }
 
@@ -62,8 +63,12 @@ export async function GET(req: NextRequest) {
 
     const resourcesWithRatings = resources.map(resource => {
       const stats = ratingStats.find(s => String(s._id) === String(resource._id));
+      // Defensive mapping for resourceType
+      const resourceType = resource.resourceType || (resource as any).sourceType || "Notes";
+
       return {
         ...resource,
+        resourceType,
         averageRating: stats ? Number(stats.averageRating.toFixed(1)) : 0,
         totalRatings: stats ? stats.totalRatings : 0
       };
