@@ -67,3 +67,25 @@ export function formatDistanceToNow(date: Date | string): string {
   return rtf.format(Math.round(diff / 31536000), "year");
 }
 
+export function generateHandle(base: string): string {
+  // Clean the base - remove spaces, special chars, lowercase
+  const clean = base.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
+  return clean || "user";
+}
+
+export function getAvatar(imageUrl?: string | null): string {
+  if (!imageUrl || imageUrl.length < 10) return "/images/default-avatar.png";
+
+  // Clerk's default/initials URLs often contain these patterns
+  const isDefault =
+    imageUrl.includes("default-user") ||
+    imageUrl.includes("avatar_placeholder") ||
+    imageUrl.includes("initials") ||
+    // Sometimes they look like https://img.clerk.com/hex-code
+    (imageUrl.includes("clerk.com") && !imageUrl.includes("?")); // Real images usually have query params or specific paths
+
+  if (isDefault) {
+    return "/images/default-avatar.png";
+  }
+  return imageUrl;
+}

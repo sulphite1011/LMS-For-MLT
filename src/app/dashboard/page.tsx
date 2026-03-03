@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
-import { formatDistanceToNow } from "@/lib/utils";
+import { useAuthState } from "@/contexts/AuthContext";
+import { formatDistanceToNow, getAvatar } from "@/lib/utils";
 import type { Metadata } from "next";
 
 interface UserProfile {
@@ -56,6 +57,7 @@ const TABS = [
 
 export default function DashboardPage() {
   const { user: clerkUser, isLoaded } = useUser();
+  const { userImage: authImage } = useAuthState();
   const [activeTab, setActiveTab] = useState("profile");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -192,7 +194,8 @@ export default function DashboardPage() {
     setAvatarFile(null);
   };
 
-  const displayAvatar = avatarPreview || profile?.customAvatar || profile?.userImage || "/images/default-avatar.png";
+  const displayAvatar = avatarPreview ||
+    getAvatar(profile?.customAvatar || profile?.userImage || authImage);
 
   if (!isLoaded) {
     return (
@@ -355,7 +358,7 @@ export default function DashboardPage() {
                 </dl>
               </div>
 
-              <div className="bg-gradient-to-br from-teal/5 to-teal/10 rounded-2xl p-6 border border-teal/20">
+              <div className="bg-linear-to-br from-teal/5 to-teal/10 rounded-2xl p-6 border border-teal/20">
                 <h3 className="font-semibold text-teal text-sm mb-2">How to edit your profile</h3>
                 <p className="text-slate-600 text-sm">Click the <strong className="text-slate-800">Edit Profile</strong> button at the top to update your username, bio, and profile picture.</p>
               </div>

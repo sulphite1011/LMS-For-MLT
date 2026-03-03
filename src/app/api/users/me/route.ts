@@ -4,6 +4,7 @@ import User from "@/models/User";
 import { getAuthUser } from "@/lib/auth";
 
 const HANDLE_CHANGE_DAYS = 15;
+const DEFAULT_AVATAR = "/images/default-avatar.png";
 
 export async function GET() {
   try {
@@ -89,7 +90,7 @@ export async function PATCH(req: NextRequest) {
     if (customAvatar !== undefined) {
       // Accepts base64 data URL or https:// URL — processed on client side
       updateData.customAvatar = customAvatar;
-      updateData.userImage = customAvatar; // Force sync the visual avatar so it doesn't flicker on refresh
+      updateData.userImage = customAvatar || DEFAULT_AVATAR; // Force sync the visual avatar so it doesn't flicker on refresh
     }
 
     const updated = await User.findOneAndUpdate(

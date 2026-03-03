@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Star, Send, Loader2, Check } from "lucide-react";
 import { useUser, SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import { CommentItem } from "./CommentItem";
+import { useAuthState } from "@/contexts/AuthContext";
+import { getAvatar } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 interface Comment {
@@ -28,6 +30,7 @@ interface RatingStats {
 
 export function CommentSection({ resourceId, resourceAuthorId }: { resourceId: string; resourceAuthorId?: string }) {
   const { user } = useUser();
+  const { userImage: authImage } = useAuthState();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
@@ -249,7 +252,7 @@ export function CommentSection({ resourceId, resourceAuthorId }: { resourceId: s
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex items-center gap-4 mb-2">
               <img
-                src={user?.hasImage ? user.imageUrl : "/images/default-avatar.png"}
+                src={getAvatar(authImage || user?.imageUrl)}
                 alt={user?.username || "User"}
                 className="w-10 h-10 rounded-full object-cover border-2 border-slate-50"
                 onError={e => (e.currentTarget.src = "/images/default-avatar.png")}

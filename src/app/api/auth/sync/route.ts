@@ -5,11 +5,7 @@ import User from "@/models/User";
 
 const DEFAULT_AVATAR = "/images/default-avatar.png";
 
-function generateHandle(base: string): string {
-  // Clean the base - remove spaces, special chars, lowercase
-  const clean = base.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
-  return clean || "user";
-}
+import { generateHandle, getAvatar } from "@/lib/utils";
 
 export async function POST() {
   try {
@@ -26,9 +22,8 @@ export async function POST() {
     const emails = (clerkUser.emailAddresses || []).map(e => e.emailAddress.toLowerCase());
     const isHamad = emails.includes("hamadkhadimdgkmc@gmail.com");
 
-    const resolvedImage = clerkUser.imageUrl && clerkUser.imageUrl.length > 10
-      ? clerkUser.imageUrl
-      : DEFAULT_AVATAR;
+    const resolvedImage = clerkUser.hasImage ? clerkUser.imageUrl : DEFAULT_AVATAR;
+    const isClerkDefault = !clerkUser.hasImage;
 
     await dbConnect();
 
@@ -79,15 +74,19 @@ export async function POST() {
         user.role = "superAdmin";
         hasChanges = true;
       }
-      // Only update userImage if user specifically updated it on Google
-      if (user.userImage !== resolvedImage && resolvedImage !== DEFAULT_AVATAR && !user.customAvatar) {
+      // Always ensure we have a valid image
+      if (user.customAvatar) {
+        // Keep custom as is
+      } else if (isClerkDefault || !user.userImage || user.userImage.includes("default-user") || user.userImage.includes("avatar_placeholder")) {
+        if (user.userImage !== DEFAULT_AVATAR) {
+          user.userImage = DEFAULT_AVATAR;
+          hasChanges = true;
+        }
+      } else if (user.userImage !== resolvedImage) {
         user.userImage = resolvedImage;
         hasChanges = true;
       }
-      if (!user.userImage && !user.customAvatar) {
-        user.userImage = DEFAULT_AVATAR;
-        hasChanges = true;
-      }
+
       // Auto-assign handle if missing (for existing users)
       if (!user.userHandle) {
         let baseHandle = generateHandle(user.username);
@@ -106,6 +105,7 @@ export async function POST() {
       _id: user._id,
       username: user.username,
       userHandle: user.userHandle,
+      userImage: user.customAvatar || user.userImage || DEFAULT_AVATAR,
       role: user.role,
     });
   } catch (error: any) {

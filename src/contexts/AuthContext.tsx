@@ -8,6 +8,7 @@ interface AuthState {
   isSignedIn: boolean;
   userRole: "superAdmin" | "admin" | "user" | null;
   username: string | null;
+  userImage: string | null;
   dbUserId: string | null;
 }
 
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthState>({
   isSignedIn: false,
   userRole: null,
   username: null,
+  userImage: null,
   dbUserId: null,
 });
 
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isSignedIn: false,
     userRole: null,
     username: null,
+    userImage: null,
     dbUserId: null,
   });
 
@@ -38,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isSignedIn: false,
         userRole: null,
         username: null,
+        userImage: null,
         dbUserId: null,
       });
       return;
@@ -55,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isSignedIn: true,
             userRole: data.role,
             username: data.username,
+            userImage: data.userImage,
             dbUserId: data._id,
           });
         } else {
@@ -69,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isSignedIn: true,
           userRole: null,
           username: user?.username || null,
+          userImage: user?.hasImage ? user.imageUrl : "/images/default-avatar.png",
           dbUserId: null,
         });
       }

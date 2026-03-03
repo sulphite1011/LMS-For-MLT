@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { ThumbsUp, Reply, Send, Star, Trash2, AtSign, CornerDownRight } from "lucide-react";
-import { formatDistanceToNow } from "@/lib/utils";
+import { formatDistanceToNow, getAvatar } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
@@ -40,8 +40,6 @@ interface CommentItemProps {
   resourceAuthorId?: string;
   allCommenters?: string[]; // for @mention autocomplete
 }
-
-const DEFAULT_AVATAR = "/images/default-avatar.png";
 
 // Get unique commenter usernames from all replies + main comment
 function getMentionSuggestions(comment: Comment, excludeUser: string): string[] {
@@ -156,10 +154,10 @@ export function CommentItem({
         {/* Avatar */}
         <div className="shrink-0">
           <img
-            src={comment.userImage || DEFAULT_AVATAR}
+            src={getAvatar(comment.userImage)}
             alt={comment.userName}
             className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 border-slate-50 shadow-sm"
-            onError={e => (e.currentTarget.src = DEFAULT_AVATAR)}
+            onError={e => (e.currentTarget.src = "/images/default-avatar.png")}
           />
         </div>
 
@@ -261,10 +259,10 @@ export function CommentItem({
                   <motion.div key={idx} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 group/reply">
                     <div className="shrink-0">
                       <img
-                        src={reply.userImage || DEFAULT_AVATAR}
+                        src={getAvatar(reply.userImage)}
                         alt={reply.userName}
                         className="w-8 h-8 rounded-full object-cover border-2 border-slate-50"
-                        onError={e => (e.currentTarget.src = DEFAULT_AVATAR)}
+                        onError={e => (e.currentTarget.src = "/images/default-avatar.png")}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
