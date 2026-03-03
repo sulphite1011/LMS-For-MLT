@@ -207,7 +207,7 @@ export default function EditResourcePage() {
   if (loadingResource) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-[#14b8a6]" />
+        <Loader2 className="w-8 h-8 animate-spin text-teal" />
       </div>
     );
   }
@@ -222,7 +222,7 @@ export default function EditResourcePage() {
           <ArrowLeft className="w-5 h-5 text-gray-500" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-[#1e293b]">Edit Resource</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Edit Resource</h1>
           <p className="text-gray-500 text-sm mt-1">
             Update resource details
           </p>
@@ -232,7 +232,7 @@ export default function EditResourcePage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Info */}
         <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg">
+          <h2 className="font-semibold text-text-primary text-lg">
             Basic Information
           </h2>
           <div>
@@ -243,7 +243,7 @@ export default function EditResourcePage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm"
               required
             />
           </div>
@@ -257,7 +257,7 @@ export default function EditResourcePage() {
                 value={subjectName}
                 onChange={(e) => setSubjectName(e.target.value)}
                 placeholder="e.g. Mathematics, Physics..."
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm"
                 required
               />
             </div>
@@ -268,7 +268,7 @@ export default function EditResourcePage() {
               <select
                 value={resourceType}
                 onChange={(e) => setResourceType(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm bg-white"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm bg-white"
                 required
               >
                 <option value="">Select type</option>
@@ -286,17 +286,17 @@ export default function EditResourcePage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm resize-none"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm resize-none"
             />
           </div>
         </div>
 
         {/* Banner Image */}
         <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg">Banner Image</h2>
+          <h2 className="font-semibold text-text-primary text-lg">Banner Image</h2>
           <div
             {...getBannerRootProps()}
-            className="border-2 border-dashed border-gray-200 hover:border-[#14b8a6] rounded-xl p-6 text-center cursor-pointer transition-colors"
+            className="border-2 border-dashed border-gray-200 hover:border-teal rounded-xl p-6 text-center cursor-pointer transition-colors"
           >
             <input {...getBannerInputProps()} />
             {bannerPreview ? (
@@ -322,17 +322,17 @@ export default function EditResourcePage() {
             value={bannerImageUrl}
             onChange={(e) => { setBannerImageUrl(e.target.value); if (e.target.value) setBannerPreview(e.target.value); }}
             placeholder="Or paste image URL"
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm"
           />
         </div>
 
         {/* PDF Files */}
         <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg flex items-center gap-2">
-            <FileText className="w-5 h-5 text-[#14b8a6]" /> PDF/Image Files
+          <h2 className="font-semibold text-text-primary text-lg flex items-center gap-2">
+            <FileText className="w-5 h-5 text-teal" /> PDF/Image Files
             <span className="text-xs text-gray-400 font-normal">(up to 5 files, 10MB each)</span>
           </h2>
-          <div {...getFileRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isFileDragActive ? "border-[#14b8a6] bg-[#14b8a6]/5" : "border-gray-200 hover:border-[#14b8a6]"}`}>
+          <div {...getFileRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isFileDragActive ? "border-teal bg-teal/5" : "border-gray-200 hover:border-teal"}`}>
             <input {...getFileInputProps()} />
             <Upload className="w-10 h-10 text-gray-300 mx-auto mb-2" />
             <p className="text-sm text-gray-500">{isFileDragActive ? "Drop files here..." : "Drag & drop PDFs or click to browse"}</p>
@@ -342,7 +342,7 @@ export default function EditResourcePage() {
             <div className="space-y-2">
               {pdfFiles.map((f) => (
                 <div key={f.id} className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-2.5">
-                  <FileText className={`w-5 h-5 ${f.isExisting ? "text-slate-400" : "text-[#14b8a6]"} shrink-0`} />
+                  <FileText className={`w-5 h-5 ${f.isExisting ? "text-slate-400" : "text-teal"} shrink-0`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-700 truncate">{f.name}</p>
                     {f.size && <p className="text-xs text-gray-400">{(f.size / 1024 / 1024).toFixed(2)} MB {f.isExisting && "(Existing)"}</p>}

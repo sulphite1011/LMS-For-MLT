@@ -55,47 +55,55 @@ export function SearchFilterBar({
           )}
         </div>
 
-        {/* Filter Chips */}
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-          {/* Type Filters */}
-          <div className="flex gap-2 shrink-0">
-            <FilterChip
-              label="All Types"
-              active={activeType === null}
-              onClick={() => onTypeChange(null)}
-            />
-            {resourceTypes.map((type) => (
+        {/* Filter Rows */}
+        <div className="space-y-4">
+          {/* Type Filters Section */}
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-gray-400 font-bold ml-1">By Content Type</span>
+            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
               <FilterChip
-                key={type}
-                label={type}
-                active={activeType === type}
-                onClick={() =>
-                  onTypeChange(activeType === type ? null : type)
-                }
+                label="All Types"
+                active={activeType === null}
+                onClick={() => onTypeChange(null)}
               />
-            ))}
+              {resourceTypes.map((type) => (
+                <FilterChip
+                  key={type}
+                  label={type}
+                  active={activeType === type}
+                  onClick={() =>
+                    onTypeChange(activeType === type ? null : type)
+                  }
+                />
+              ))}
+            </div>
           </div>
 
-          {/* Divider */}
+          {/* Subject Filters Section */}
           {Array.isArray(subjects) && subjects.length > 0 && (
-            <div className="w-px bg-gray-200 flex-shrink-0 mx-1" />
+            <div className="flex flex-col gap-2">
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-bold ml-1">By Subject</span>
+              <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+                <FilterChip
+                  label="All Subjects"
+                  active={activeSubject === null}
+                  onClick={() => onSubjectChange(null)}
+                />
+                {subjects.map((subject) => (
+                  <FilterChip
+                    key={subject._id}
+                    label={subject.name}
+                    active={activeSubject === subject._id}
+                    onClick={() =>
+                      onSubjectChange(
+                        activeSubject === subject._id ? null : subject._id
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            </div>
           )}
-
-          {/* Subject Filters */}
-          <div className="flex gap-2 shrink-0">
-            {Array.isArray(subjects) && subjects.map((subject) => (
-              <FilterChip
-                key={subject._id}
-                label={subject.name}
-                active={activeSubject === subject._id}
-                onClick={() =>
-                  onSubjectChange(
-                    activeSubject === subject._id ? null : subject._id
-                  )
-                }
-              />
-            ))}
-          </div>
         </div>
       </div>
     </div>
@@ -115,8 +123,8 @@ function FilterChip({
     <motion.button
       onClick={onClick}
       className={`relative px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${active
-        ? "bg-[#14b8a6] text-white shadow-md"
-        : "bg-gray-50 text-gray-600 border border-gray-200 hover:border-[#14b8a6] hover:text-[#14b8a6]"
+        ? "bg-teal text-white shadow-md"
+        : "bg-gray-50 text-gray-600 border border-gray-200 hover:border-teal hover:text-teal"
         }`}
       whileTap={{ scale: 0.95 }}
       suppressHydrationWarning
