@@ -21,7 +21,7 @@ const MicroscopeIcon = () => (
     strokeWidth="1.5"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="w-16 h-16 text-purple-600 dark:text-purple-400"
+    className="w-16 h-16 text-teal-600 dark:text-teal-400"
   >
     <path d="M6 18h8" />
     <path d="M3 22h18" />
@@ -53,7 +53,7 @@ const DNAIcon = () => (
     strokeWidth="1.5"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="w-16 h-16 text-pink-600 dark:text-pink-400"
+    className="w-16 h-16 text-blue-600 dark:text-blue-400"
   >
     <motion.path
       d="m8 15 8-6"
@@ -85,7 +85,7 @@ const BloodDropIcon = () => (
     strokeWidth="1.5"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="w-16 h-16 text-red-500 dark:text-red-400"
+    className="w-16 h-16 text-cyan-600 dark:text-cyan-400"
   >
     <motion.path
       d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5L12 2 8 9.5c-2 1.6-3 3.5-3 5.5a7 7 0 0 0 7 7Z"
@@ -103,7 +103,7 @@ const TestTubeIcon = () => (
     strokeWidth="1.5"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="w-16 h-16 text-indigo-600 dark:text-indigo-400"
+    className="w-16 h-16 text-teal-500 dark:text-teal-300"
   >
     <path d="M21 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2" />
     <path d="M16 22H8a2 2 0 0 1-2-2V7h12v13a2 2 0 0 1-2 2Z" />
@@ -136,15 +136,15 @@ export default function LoadingComponent() {
   }, []);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
+    <div className="fixed inset-0 flex items-center justify-center bg-linear-to-br from-slate-50 via-teal-50/30 to-blue-50/30 dark:from-navy dark:via-navy-light dark:to-navy">
       <div className="relative flex flex-col items-center justify-center w-full max-w-md p-12 space-y-8 select-none">
         {/* Main Animation Container */}
         <div className="relative">
           {/* Glow behind icon */}
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 blur-[100px] rounded-full scale-150 animate-pulse" />
+          <div className="absolute inset-0 bg-linear-to-r from-teal-400/20 via-blue-400/20 to-cyan-400/20 blur-[100px] rounded-full scale-150 animate-pulse" />
 
           {/* Icon Container */}
-          <div className="relative z-10 bg-white/90 dark:bg-gray-800/90 p-10 rounded-3xl border border-purple-200/50 dark:border-purple-700/50 shadow-2xl backdrop-blur-xl">
+          <div className="relative z-10 bg-white/90 dark:bg-navy-light/90 p-10 rounded-3xl border border-teal-200/50 dark:border-teal-700/50 shadow-2xl backdrop-blur-xl">
             <AnimatePresence mode="wait">
               <motion.div
                 key={index}
@@ -164,9 +164,9 @@ export default function LoadingComponent() {
               key={i}
               className="absolute w-2 h-2 rounded-full"
               style={{
-                background: i % 2 === 0 
-                  ? 'linear-gradient(135deg, #c084fc, #f472b6)' 
-                  : 'linear-gradient(135deg, #818cf8, #c084fc)',
+                background: i % 2 === 0
+                  ? 'linear-gradient(135deg, #14b8a6, #3b82f6)'
+                  : 'linear-gradient(135deg, #0ea5e9, #14b8a6)',
                 left: "50%",
                 top: "50%",
               }}
@@ -194,7 +194,7 @@ export default function LoadingComponent() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -20, opacity: 0 }}
-              className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 dark:from-purple-400 dark:via-pink-400 dark:to-indigo-400 bg-clip-text text-transparent"
+              className="text-2xl font-bold bg-linear-to-r from-teal-600 via-blue-600 to-cyan-600 dark:from-teal-400 dark:via-blue-400 dark:to-cyan-400 bg-clip-text text-transparent"
             >
               {LOADING_MESSAGES[index]}
             </motion.p>
@@ -202,9 +202,9 @@ export default function LoadingComponent() {
         </div>
 
         {/* Progress Bar */}
-        <div className="w-64 h-2 bg-gradient-to-r from-purple-200/50 via-pink-200/50 to-indigo-200/50 dark:from-purple-800/30 dark:via-pink-800/30 dark:to-indigo-800/30 rounded-full overflow-hidden">
+        <div className="w-64 h-2 bg-linear-to-r from-teal-200/50 via-blue-200/50 to-cyan-200/50 dark:from-teal-800/20 dark:via-blue-800/20 dark:to-cyan-800/20 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500"
+            className="h-full bg-linear-to-r from-teal-500 via-blue-500 to-cyan-500"
             animate={{ x: ["-100%", "100%"] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
             style={{ width: "100%" }}
@@ -213,9 +213,9 @@ export default function LoadingComponent() {
 
         {/* Background Decorations */}
         <div className="absolute -z-10 inset-0 overflow-hidden">
-          <div className="absolute top-0 left-0 w-72 h-72 bg-purple-300/20 dark:bg-purple-600/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-0 w-72 h-72 bg-pink-300/20 dark:bg-pink-600/10 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-300/20 dark:bg-indigo-600/10 rounded-full blur-3xl" />
+          <div className="absolute top-0 left-0 w-72 h-72 bg-teal-300/10 dark:bg-teal-600/5 rounded-full blur-3xl opacity-50" />
+          <div className="absolute bottom-0 right-0 w-72 h-72 bg-blue-300/10 dark:bg-blue-600/5 rounded-full blur-3xl opacity-50" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-300/10 dark:bg-cyan-600/5 rounded-full blur-3xl opacity-30" />
         </div>
       </div>
     </div>
