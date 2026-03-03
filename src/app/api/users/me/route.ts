@@ -83,7 +83,7 @@ export async function PATCH(req: NextRequest) {
         if (trimmed.length > 30) {
           return NextResponse.json({ error: "Username must be 30 characters or less" }, { status: 400 });
         }
-        const existing = await User.findOne({ username: trimmed, clerkId: { $ne: clerkId } });
+        const existing = await User.findOne({ username: trimmed, clerkId: { $ne: clerkId } }).collation({ locale: 'en', strength: 2 });
         if (existing) {
           return NextResponse.json({ error: "Username already taken" }, { status: 409 });
         }
@@ -109,7 +109,7 @@ export async function PATCH(req: NextRequest) {
       if (!cleanHandle || cleanHandle.length < 2) {
         return NextResponse.json({ error: "Handle must be at least 2 characters (letters, numbers, underscore only)" }, { status: 400 });
       }
-      const existingHandle = await User.findOne({ userHandle: cleanHandle, clerkId: { $ne: clerkId } });
+      const existingHandle = await User.findOne({ userHandle: cleanHandle, clerkId: { $ne: clerkId } }).collation({ locale: 'en', strength: 2 });
       if (existingHandle) {
         return NextResponse.json({ error: "@handle already taken" }, { status: 409 });
       }
