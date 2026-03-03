@@ -152,6 +152,9 @@ export default function DashboardPage() {
 
   const { updateUser } = useAuthState();
 
+  const favoriteIds = new Set(favorites.map(f => f._id));
+  const likedIds = new Set(liked.map(l => l._id));
+
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -412,7 +415,27 @@ export default function DashboardPage() {
                   <p className="text-slate-500 text-sm mb-4">{favorites.length} saved resource{favorites.length !== 1 ? "s" : ""}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {favorites.map(r => (
-                      <ResourceCard key={r._id} _id={r._id} title={r.title} description={r.description} resourceType={r.resourceType as any} bannerImageUrl={r.bannerImageUrl} subjectName={r.subjectId?.name || "Unknown"} hasFile={r.fileData?.fileType === "pdf"} averageRating={r.averageRating} totalRatings={r.totalRatings} />
+                      <ResourceCard
+                        key={r._id}
+                        _id={r._id}
+                        title={r.title}
+                        description={r.description}
+                        resourceType={r.resourceType as any}
+                        bannerImageUrl={r.bannerImageUrl}
+                        subjectName={r.subjectId?.name || "Unknown"}
+                        hasFile={r.fileData?.fileType === "pdf"}
+                        averageRating={r.averageRating}
+                        totalRatings={r.totalRatings}
+                        isFavorite={true}
+                        isLiked={likedIds.has(r._id)}
+                        onFavoriteToggle={(_id, action) => {
+                          if (action === "removed") setFavorites(prev => prev.filter(f => f._id !== _id));
+                        }}
+                        onLikeToggle={(_id, action) => {
+                          if (action === "added") setLiked(prev => [...prev, r as any]);
+                          else setLiked(prev => prev.filter(l => l._id !== _id));
+                        }}
+                      />
                     ))}
                   </div>
                 </div>
@@ -438,7 +461,27 @@ export default function DashboardPage() {
                   <p className="text-slate-500 text-sm mb-4">{liked.length} liked resource{liked.length !== 1 ? "s" : ""}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {liked.map(r => (
-                      <ResourceCard key={r._id} _id={r._id} title={r.title} description={r.description} resourceType={r.resourceType as any} bannerImageUrl={r.bannerImageUrl} subjectName={r.subjectId?.name || "Unknown"} hasFile={r.fileData?.fileType === "pdf"} averageRating={r.averageRating} totalRatings={r.totalRatings} />
+                      <ResourceCard
+                        key={r._id}
+                        _id={r._id}
+                        title={r.title}
+                        description={r.description}
+                        resourceType={r.resourceType as any}
+                        bannerImageUrl={r.bannerImageUrl}
+                        subjectName={r.subjectId?.name || "Unknown"}
+                        hasFile={r.fileData?.fileType === "pdf"}
+                        averageRating={r.averageRating}
+                        totalRatings={r.totalRatings}
+                        isFavorite={favoriteIds.has(r._id)}
+                        isLiked={true}
+                        onFavoriteToggle={(_id, action) => {
+                          if (action === "added") setFavorites(prev => [...prev, r as any]);
+                          else setFavorites(prev => prev.filter(f => f._id !== _id));
+                        }}
+                        onLikeToggle={(_id, action) => {
+                          if (action === "removed") setLiked(prev => prev.filter(l => l._id !== _id));
+                        }}
+                      />
                     ))}
                   </div>
                 </div>

@@ -21,8 +21,8 @@ interface ResourceCardProps {
   resourceAuthorId?: string;
   isFavorite?: boolean;
   isLiked?: boolean;
-  onFavoriteToggle?: (_id: string) => void;
-  onLikeToggle?: (_id: string) => void;
+  onFavoriteToggle?: (_id: string, action: "added" | "removed") => void;
+  onLikeToggle?: (_id: string, action: "added" | "removed") => void;
 }
 
 const typeIcons: Record<ResourceType, React.ReactNode> = {
@@ -48,6 +48,7 @@ export function ResourceCard({
     e.preventDefault();
     e.stopPropagation();
     if (!user) { toast.error("Sign in to save favorites"); return; }
+    console.log("[ResourceCard] handleFav called. Current state:", localFav);
     setLocalFav(prev => !prev);
     setLoading(true);
     try {
@@ -56,16 +57,29 @@ export function ResourceCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resourceId: _id, type: "favorite" }),
       });
-      if (!res.ok) { setLocalFav(prev => !prev); toast.error("Failed"); }
-      else { toast.success(localFav ? "Removed from favorites" : "Added to favorites"); }
-      onFavoriteToggle?.(_id);
-    } catch { setLocalFav(prev => !prev); } finally { setLoading(false); }
+      if (!res.ok) {
+        console.error("[ResourceCard] handleFav failed:", res.status);
+        setLocalFav(prev => !prev);
+        toast.error("Failed");
+      }
+      else {
+        const data = await res.json();
+        const finalAction = data.action as "added" | "removed";
+        setLocalFav(finalAction === "added");
+        toast.success(finalAction === "added" ? "Added to favorites" : "Removed from favorites");
+        onFavoriteToggle?.(_id, finalAction);
+      }
+    } catch (err) {
+      console.error("[ResourceCard] handleFav error:", err);
+      setLocalFav(prev => !prev);
+    } finally { setLoading(false); }
   }, [user, _id, localFav, onFavoriteToggle]);
 
   const handleLike = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!user) { toast.error("Sign in to like resources"); return; }
+    console.log("[ResourceCard] handleLike called. Current state:", localLike);
     setLocalLike(prev => !prev);
     setLoading(true);
     try {
@@ -74,10 +88,22 @@ export function ResourceCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resourceId: _id, type: "like" }),
       });
-      if (!res.ok) { setLocalLike(prev => !prev); toast.error("Failed"); }
-      else { toast.success(localLike ? "Removed from liked" : "Liked!"); }
-      onLikeToggle?.(_id);
-    } catch { setLocalLike(prev => !prev); } finally { setLoading(false); }
+      if (!res.ok) {
+        console.error("[ResourceCard] handleLike failed:", res.status);
+        setLocalLike(prev => !prev);
+        toast.error("Failed");
+      }
+      else {
+        const data = await res.json();
+        const finalAction = data.action as "added" | "removed";
+        setLocalLike(finalAction === "added");
+        toast.success(finalAction === "added" ? "Liked!" : "Removed from liked");
+        onLikeToggle?.(_id, finalAction);
+      }
+    } catch (err) {
+      console.error("[ResourceCard] handleLike error:", err);
+      setLocalLike(prev => !prev);
+    } finally { setLoading(false); }
   }, [user, _id, localLike, onLikeToggle]);
 
   return (
@@ -106,7 +132,7 @@ export function ResourceCard({
 
             {/* Fav + Like buttons (top-right) */}
             {user && (
-              <div className="absolute top-3 right-3 flex gap-1.5">
+              <div className="absolute top-3 right-3 flex gap-1.5 z-20">
                 <button
                   onClick={handleLike}
                   disabled={loading}
@@ -132,7 +158,7 @@ export function ResourceCard({
               </div>
             )}
 
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
               <span className="bg-teal text-white px-5 py-2.5 rounded-full text-sm font-medium shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                 View Resource
               </span>

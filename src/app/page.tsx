@@ -37,6 +37,18 @@ export default function HomePage() {
   const [activeType, setActiveType] = useState<string | null>(null);
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
 
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const res = await fetch("/api/users/me");
+        if (res.ok) setCurrentUser(await res.json());
+      } catch (err) {
+        console.error("Failed to fetch user profile:", err);
+      }
+    };
+    fetchUserProfile();
+  }, []);
+
   const fetchResources = useCallback(async () => {
     setLoading(true);
     try {
@@ -48,18 +60,12 @@ export default function HomePage() {
       const res = await fetch(`/api/resources?${params}`);
       const data = await res.json();
       setResources(data.resources || []);
-
-      // Fetch user profile for favorites/likes if we don't have it
-      if (!currentUser) {
-        const userRes = await fetch("/api/users/me");
-        if (userRes.ok) setCurrentUser(await userRes.json());
-      }
     } catch (error) {
       console.error("Failed to fetch resources:", error);
     } finally {
       setLoading(false);
     }
-  }, [search, activeType, activeSubject, currentUser]);
+  }, [search, activeType, activeSubject]);
 
   const fetchSubjects = async () => {
     try {

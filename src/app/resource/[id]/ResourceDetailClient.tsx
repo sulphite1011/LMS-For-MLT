@@ -61,6 +61,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
   const [related, setRelated] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeVideo, setActiveVideo] = useState(0);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     const fetchResource = async () => {
@@ -82,6 +83,10 @@ export default function ResourceDetailClient({ id }: { id: string }) {
             )
           );
         }
+
+        // Fetch user profile for favorites/likes
+        const userRes = await fetch("/api/users/me");
+        if (userRes.ok) setCurrentUser(await userRes.json());
       } catch (err) {
         console.error("Failed to fetch resource:", err);
       } finally {
@@ -417,6 +422,8 @@ export default function ResourceDetailClient({ id }: { id: string }) {
                     r.fileData?.fileType === "pdf" ||
                     r.fileData?.fileType === "image"
                   }
+                  isFavorite={currentUser?.favoriteResources?.includes(r._id)}
+                  isLiked={currentUser?.likedResources?.includes(r._id)}
                 />
               ))}
             </div>
