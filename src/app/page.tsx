@@ -16,8 +16,6 @@ import Comment from "@/models/Comment";
 import User from "@/models/User"; // Required for .populate("createdBy")
 import mongoose from "mongoose";
 
-const BASE_URL = "https://lms-for-mlt.vercel.app";
-
 // Fetch initial resources server-side (bypasses API round-trip, runs at the edge)
 async function getInitialData() {
   try {
@@ -45,7 +43,6 @@ async function getInitialData() {
       const stats = ratingStats.find((s) => String(s._id) === String(resource._id));
       return {
         ...resource,
-        _id: String(resource._id),
         averageRating: stats ? Number(stats.averageRating.toFixed(1)) : 0,
         totalRatings: stats ? stats.totalRatings : 0,
       };
@@ -53,7 +50,7 @@ async function getInitialData() {
 
     return {
       resources: JSON.parse(JSON.stringify(resourcesWithRatings)),
-      subjects: JSON.parse(JSON.stringify(subjects.map((s) => ({ ...s, _id: String(s._id) })))),
+      subjects: JSON.parse(JSON.stringify(subjects)),
     };
   } catch (error) {
     console.error("[Homepage] Failed to fetch initial data:", error);

@@ -7,15 +7,28 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-// Server-side: fetch resource metadata for SEO
+import dbConnect from "@/lib/db";
+import Resource from "@/models/Resource";
+import Subject from "@/models/Subject"; // Required for populate
+import User from "@/models/User"; // Required for populate
+import mongoose from "mongoose";
+
+// Server-side: fetch resource data directly from DB
 async function getResource(id: string) {
   try {
-    const res = await fetch(`${BASE_URL}/api/resources/${id}`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
+    if (!mongoose.Types.ObjectId.isValid(id)) return null;
+    await dbConnect();
+    const resource = await Resource.findById(id)
+      .populate("subjectId", "name")
+      .populate("createdBy", "clerkId")
+      .lean();
+
+    if (!resource) return null;
+
+    // Convert ObjectIds to strings for serialization
+    return JSON.parse(JSON.stringify(resource));
+  } catch (err) {
+    console.error("[SSR getResource] Error:", err);
     return null;
   }
 }

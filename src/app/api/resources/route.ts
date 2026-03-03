@@ -73,9 +73,9 @@ export async function GET(req: NextRequest) {
       { resources: resourcesWithRatings, total, pages: Math.ceil(total / limit), page },
       {
         headers: {
-          // Cache for 30s at the edge; serve stale for 60s while revalidating in the background.
+          // Cache for 5s at the edge; serve stale for 60s while revalidating in the background.
           // Authenticated/admin requests bypass this via Vercel's auth headers.
-          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+          "Cache-Control": "public, s-maxage=5, stale-while-revalidate=60",
         },
       }
     );
