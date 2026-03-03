@@ -1,6 +1,9 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isProtectedRoute = createRouteMatcher(["/admin(.*)", "/resource/(.*)"]);
+// Only admin routes require authentication.
+// Resource pages are intentionally public so unauthenticated users and
+// search engine crawlers can view course content (important for SEO).
+const isProtectedRoute = createRouteMatcher(["/admin(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {

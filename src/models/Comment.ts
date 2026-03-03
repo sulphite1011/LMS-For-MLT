@@ -56,6 +56,8 @@ const CommentSchema = new Schema<ICommentDoc>(
 CommentSchema.index({ resourceId: 1 });
 CommentSchema.index({ createdAt: -1 });
 CommentSchema.index({ userId: 1 }); // for user dashboard activity
+// Composite: speeds up rating aggregation query (resourceId + rating filter + group)
+CommentSchema.index({ resourceId: 1, rating: 1 });
 
 const Comment: Model<ICommentDoc> =
   mongoose.models.Comment || mongoose.model<ICommentDoc>("Comment", CommentSchema);

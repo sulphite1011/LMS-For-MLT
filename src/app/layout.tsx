@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -9,9 +9,19 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap", // Ensures text is visible during font load (font-display: swap)
 });
 
-export const dynamic = "force-dynamic";
+// Viewport export (moved out of metadata per Next.js 14+ recommendation)
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#14b8a6",
+};
+
+// NOTE: Do NOT add `export const dynamic = "force-dynamic"` here.
+// That would force every page in the app to SSR on every request,
+// disabling all caching. Pages opt into dynamic rendering individually if needed.
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://lms-for-mlt.vercel.app"),
@@ -86,6 +96,12 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
+        <head>
+          {/* Preconnect to external origins to reduce connection latency */}
+          <link rel="preconnect" href="https://clerk.com" />
+          <link rel="dns-prefetch" href="https://clerk.com" />
+          <link rel="preconnect" href="https://img.clerk.com" />
+        </head>
         <body className={`${inter.variable} font-sans antialiased`}>
           <AuthProvider>
             {children}

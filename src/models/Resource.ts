@@ -87,8 +87,10 @@ const ResourceSchema = new Schema<IResourceDoc>(
 );
 
 ResourceSchema.index({ title: "text", description: "text" });
-ResourceSchema.index({ subjectId: 1 });
-ResourceSchema.index({ resourceType: 1 });
+// Composite indexes for filtered + sorted queries (e.g. ?subject=X&sort=newest)
+ResourceSchema.index({ subjectId: 1, createdAt: -1 });
+ResourceSchema.index({ resourceType: 1, createdAt: -1 });
+ResourceSchema.index({ subjectId: 1, resourceType: 1, createdAt: -1 });
 
 const Resource: Model<IResourceDoc> =
   mongoose.models.Resource ||

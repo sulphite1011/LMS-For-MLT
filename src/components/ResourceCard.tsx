@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { BookOpen, FileText, Video, FileCheck, HelpCircle, BookMarked, Star, Bookmark, Heart } from "lucide-react";
 import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
 import { useState, useCallback } from "react";
@@ -117,7 +118,13 @@ export function ResourceCard({
           {/* Banner */}
           <div className="relative h-48 bg-linear-to-br from-navy to-navy-light overflow-hidden">
             {bannerImageUrl ? (
-              <img src={bannerImageUrl} alt={title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+              <Image
+                src={bannerImageUrl}
+                alt={title}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                className="object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+              />
             ) : (
               <div className="flex items-center justify-center h-full">
                 <BookOpen className="w-16 h-16 text-white/20" />

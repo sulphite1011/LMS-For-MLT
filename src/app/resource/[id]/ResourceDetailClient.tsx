@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
+import Image from "next/image";
 import {
   ArrowLeft,
   BookOpen,
@@ -15,10 +17,16 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
-import { CommentSection } from "@/components/comments/CommentSection";
 import { DetailSkeleton } from "@/components/ui/Skeleton";
 import { getYoutubeEmbedUrl } from "@/lib/utils";
 import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
+
+// Dynamically import CommentSection — it's heavy and below the fold.
+// This reduces the initial JS bundle sent to the user.
+const CommentSection = dynamic(
+  () => import("@/components/comments/CommentSection").then(m => m.CommentSection),
+  { ssr: false, loading: () => <div className="h-32 rounded-2xl bg-gray-100 animate-pulse mt-8" /> }
+);
 
 interface Subject {
   _id: string;
@@ -148,10 +156,13 @@ export default function ResourceDetailClient({ id }: { id: string }) {
         className="relative h-64 md:h-80 bg-linear-to-br from-navy to-navy-light overflow-hidden"
       >
         {resource.bannerImageUrl && (
-          <img
+          <Image
             src={resource.bannerImageUrl}
             alt={resource.title}
-            className="w-full h-full object-cover opacity-30"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover opacity-30"
           />
         )}
         <div className="absolute inset-0 bg-linear-to-t from-navy via-navy/60 to-transparent" />

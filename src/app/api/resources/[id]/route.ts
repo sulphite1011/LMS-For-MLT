@@ -38,11 +38,15 @@ export async function GET(
       ? (ratedComments.reduce((acc, c) => acc + (c.rating || 0), 0) / totalRatings).toFixed(1)
       : 0;
 
-    return NextResponse.json({
-      ...resource,
-      averageRating: Number(averageRating),
-      totalRatings
-    });
+    return NextResponse.json(
+      { ...resource, averageRating: Number(averageRating), totalRatings },
+      {
+        headers: {
+          // Cache individual resource for 60s; serve stale for 2min while revalidating
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      }
+    );
   } catch (error) {
     console.error("GET /api/resources/[id] error:", error);
     return NextResponse.json(

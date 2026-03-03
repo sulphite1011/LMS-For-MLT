@@ -69,7 +69,16 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({ resources: resourcesWithRatings, total, pages: Math.ceil(total / limit), page });
+    return NextResponse.json(
+      { resources: resourcesWithRatings, total, pages: Math.ceil(total / limit), page },
+      {
+        headers: {
+          // Cache for 30s at the edge; serve stale for 60s while revalidating in the background.
+          // Authenticated/admin requests bypass this via Vercel's auth headers.
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+        },
+      }
+    );
   } catch (error) {
     console.error("GET /api/resources error:", error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
