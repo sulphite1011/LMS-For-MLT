@@ -93,8 +93,12 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (isLoaded && clerkUser) {
+      fetchProfile();
+    }
+  }, [isLoaded, !!clerkUser]);
+
+  console.log("[Dashboard] Render state:", { isLoaded, hasClerkUser: !!clerkUser, hasProfile: !!profile, editMode });
 
   useEffect(() => {
     if (activeTab === "favorites" || activeTab === "liked") fetchCollections();
@@ -103,9 +107,18 @@ export default function DashboardPage() {
 
   const fetchProfile = async () => {
     try {
+      console.log("[Dashboard] Fetching profile...");
       const res = await fetch("/api/users/me");
-      if (res.ok) setProfile(await res.json());
-    } catch { } finally {
+      if (res.ok) {
+        const data = await res.json();
+        console.log("[Dashboard] Profile fetched:", data);
+        setProfile(data);
+      } else {
+        console.error("[Dashboard] Profile fetch failed:", res.status);
+      }
+    } catch (err) {
+      console.error("[Dashboard] Profile fetch error:", err);
+    } finally {
       setLoadingProfile(false);
     }
   };
@@ -137,6 +150,8 @@ export default function DashboardPage() {
     }
   };
 
+  const { updateUser } = useAuthState();
+
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -165,6 +180,13 @@ export default function DashboardPage() {
       if (res.ok) {
         const updated = await res.json();
         setProfile(updated);
+
+        // Update global auth state so Navbar etc updates immediately
+        updateUser({
+          username: updated.username,
+          userImage: updated.userImage || updated.customAvatar || authImage,
+        });
+
         setEditMode(false);
         setAvatarFile(null);
         setAvatarPreview(null);
@@ -181,6 +203,7 @@ export default function DashboardPage() {
   };
 
   const startEdit = () => {
+    console.log("[Dashboard] startEdit called. Profile:", profile);
     setEditUsername(profile?.username || "");
     setEditBio(profile?.bio || "");
     setAvatarPreview(null);
@@ -227,8 +250,8 @@ export default function DashboardPage() {
 
       {/* Hero Banner */}
       <div className="bg-linear-to-br from-navy via-navy-light to-teal/20 pt-20 pb-0 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #14b8a6 0%, transparent 60%), radial-gradient(circle at 80% 20%, #3b82f6 0%, transparent 60%)" }} />
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-0">
+        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #14b8a6 0%, transparent 60%), radial-gradient(circle at 80% 20%, #3b82f6 0%, transparent 60%)" }} />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-0 relative z-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 pb-6">
             {/* Avatar */}
             <div className="relative">
@@ -287,7 +310,13 @@ export default function DashboardPage() {
                   </button>
                 </>
               ) : (
-                <button onClick={startEdit} className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-all text-sm">
+                <button
+                  onClick={() => {
+                    console.log("[Dashboard] Edit Profile button clicked");
+                    startEdit();
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-all text-sm"
+                >
                   <Edit3 className="w-4 h-4" /> Edit Profile
                 </button>
               )}

@@ -12,13 +12,18 @@ interface AuthState {
   dbUserId: string | null;
 }
 
-const AuthContext = createContext<AuthState>({
+interface AuthContextType extends AuthState {
+  updateUser: (data: { username?: string; userImage?: string; userRole?: any }) => void;
+}
+
+const AuthContext = createContext<AuthContextType>({
   isLoaded: false,
   isSignedIn: false,
   userRole: null,
   username: null,
   userImage: null,
   dbUserId: null,
+  updateUser: () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -83,9 +88,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     syncUser();
   }, [isLoaded, isSignedIn, user]);
 
+  const updateUser = (data: { username?: string; userImage?: string; userRole?: any }) => {
+    setAuthState(prev => ({
+      ...prev,
+      ...(data.username ? { username: data.username } : {}),
+      ...(data.userImage ? { userImage: data.userImage } : {}),
+      ...(data.userRole ? { userRole: data.userRole } : {}),
+    }));
+  };
+
   return (
-    <AuthContext.Provider value={authState}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ ...authState, updateUser }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 
-export const useAuthState = () => useContext(AuthContext);
+export const useAuthState = (): AuthContextType => useContext(AuthContext);

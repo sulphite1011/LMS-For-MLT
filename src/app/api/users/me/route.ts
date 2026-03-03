@@ -99,6 +99,10 @@ export async function PATCH(req: NextRequest) {
       { new: true }
     ).select("-password -__v");
 
+    if (!updated) {
+      return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
+    }
+
     return NextResponse.json(updated);
   } catch (error) {
     console.error("PATCH /api/users/me error:", error);
