@@ -42,7 +42,8 @@ export function SearchFilterBar({
             placeholder="Search resources..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-12 pr-10 py-3 rounded-full bg-gray-50 border border-gray-200 focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm transition-all"
+            className="w-full pl-12 pr-10 py-3 rounded-full bg-gray-50 border border-gray-200 focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm transition-all"
+            suppressHydrationWarning
           />
           {search && (
             <button
@@ -57,7 +58,7 @@ export function SearchFilterBar({
         {/* Filter Chips */}
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
           {/* Type Filters */}
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 shrink-0">
             <FilterChip
               label="All Types"
               active={activeType === null}
@@ -81,7 +82,7 @@ export function SearchFilterBar({
           )}
 
           {/* Subject Filters */}
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 shrink-0">
             {Array.isArray(subjects) && subjects.map((subject) => (
               <FilterChip
                 key={subject._id}
@@ -113,18 +114,18 @@ function FilterChip({
   return (
     <motion.button
       onClick={onClick}
-      className={`relative px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-        active
-          ? "bg-[#14b8a6] text-white shadow-md"
-          : "bg-gray-50 text-gray-600 border border-gray-200 hover:border-[#14b8a6] hover:text-[#14b8a6]"
-      }`}
+      className={`relative px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${active
+        ? "bg-[#14b8a6] text-white shadow-md"
+        : "bg-gray-50 text-gray-600 border border-gray-200 hover:border-[#14b8a6] hover:text-[#14b8a6]"
+        }`}
       whileTap={{ scale: 0.95 }}
+      suppressHydrationWarning
     >
       {label}
       {active && (
         <motion.div
           layoutId="activeFilter"
-          className="absolute inset-0 bg-[#14b8a6] rounded-full -z-10"
+          className="absolute inset-0 bg-teal rounded-full -z-10"
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         />
       )}

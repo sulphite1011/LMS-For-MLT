@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* Inter font loaded via next/font/google in layout.tsx — no @import needed here */
 @import "tailwindcss";
 
 @theme inline {
@@ -62,6 +62,7 @@ body {
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -75,9 +76,12 @@ body {
 
 /* Glow effect for CTA buttons */
 @keyframes glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 5px rgba(20, 184, 166, 0.4), 0 0 20px rgba(20, 184, 166, 0.1);
   }
+
   50% {
     box-shadow: 0 0 10px rgba(20, 184, 166, 0.6), 0 0 40px rgba(20, 184, 166, 0.2);
   }
@@ -89,9 +93,12 @@ body {
 
 /* Pulse animation */
 @keyframes pulse-soft {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.8;
   }
@@ -105,6 +112,7 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

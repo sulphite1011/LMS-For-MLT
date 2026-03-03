@@ -118,7 +118,7 @@ export default function SubjectsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1e293b]">Subjects</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Subjects</h1>
           <p className="text-gray-500 text-sm mt-1">
             Manage subject categories for your resources
           </p>
@@ -130,7 +130,7 @@ export default function SubjectsPage() {
             resetForm();
             setShowForm(true);
           }}
-          className="flex items-center gap-2 bg-[#14b8a6] hover:bg-[#0d9488] text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-md"
+          className="flex items-center gap-2 bg-teal hover:bg-teal-dark text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-md"
         >
           <Plus className="w-4 h-4" />
           Add Subject
@@ -145,7 +145,7 @@ export default function SubjectsPage() {
           className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-[#1e293b]">
+            <h2 className="font-semibold text-text-primary">
               {editingId ? "Edit Subject" : "New Subject"}
             </h2>
             <button
@@ -165,8 +165,9 @@ export default function SubjectsPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Clinical Chemistry"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm transition-all"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm transition-all"
                 required
+                suppressHydrationWarning
               />
             </div>
             <div>
@@ -178,14 +179,14 @@ export default function SubjectsPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional description..."
                 rows={2}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm transition-all resize-none"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm transition-all resize-none"
               />
             </div>
             <div className="flex gap-3">
               <button
                 type="submit"
                 disabled={saving}
-                className="flex items-center gap-2 bg-[#14b8a6] hover:bg-[#0d9488] text-white px-5 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 bg-teal hover:bg-teal-dark text-white px-5 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50"
               >
                 <Check className="w-4 h-4" />
                 {saving ? "Saving..." : editingId ? "Update" : "Create"}
@@ -242,7 +243,7 @@ export default function SubjectsPage() {
                   className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
                 >
                   <td className="px-6 py-4">
-                    <span className="font-medium text-[#1e293b]">
+                    <span className="font-medium text-text-primary">
                       {subject.name}
                     </span>
                   </td>
@@ -256,7 +257,7 @@ export default function SubjectsPage() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => startEdit(subject)}
-                        className="p-2 text-gray-400 hover:text-[#14b8a6] hover:bg-teal-50 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-teal hover:bg-teal-50 rounded-lg transition-colors"
                         title="Edit"
                       >
                         <Pencil className="w-4 h-4" />

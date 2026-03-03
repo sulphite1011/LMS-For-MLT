@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
 import Subject from "@/models/Subject";
+import Comment from "@/models/Comment";
+import User from "@/models/User";
+import mongoose from "mongoose";
 import { requireAdmin } from "@/lib/auth";
 
 export async function GET(
@@ -13,8 +16,9 @@ export async function GET(
     const { id } = await params;
 
     const resource = await Resource.findById(id)
-      .select("-fileData.fileContent -bannerImageData")
+      .select("-fileData.fileContent -bannerImageData -files.fileContent")
       .populate("subjectId", "name")
+      .populate("createdBy", "clerkId")
       .lean();
 
     if (!resource) {
@@ -24,7 +28,25 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(resource);
+    // Fetch rating stats with robust ObjectId matching
+    const ratedComments = await Comment.find({
+      resourceId: new mongoose.Types.ObjectId(id),
+      rating: { $exists: true }
+    });
+    const totalRatings = ratedComments.length;
+    const averageRating = totalRatings > 0
+      ? (ratedComments.reduce((acc, c) => acc + (c.rating || 0), 0) / totalRatings).toFixed(1)
+      : 0;
+
+    return NextResponse.json(
+      { ...resource, averageRating: Number(averageRating), totalRatings },
+      {
+        headers: {
+          // Cache individual resource for 60s; serve stale for 2min while revalidating
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      }
+    );
   } catch (error) {
     console.error("GET /api/resources/[id] error:", error);
     return NextResponse.json(

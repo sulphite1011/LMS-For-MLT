@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
       clerkId: `pending_${Date.now()}`,
       username: username.trim(),
       role: "admin",
+      password: hashedPassword,
+      isPending: true,
       createdBy: superAdmin._id,
     });
 

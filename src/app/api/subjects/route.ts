@@ -7,7 +7,12 @@ export async function GET() {
   try {
     await dbConnect();
     const subjects = await Subject.find().sort({ name: 1 }).lean();
-    return NextResponse.json(subjects);
+    return NextResponse.json(subjects, {
+      headers: {
+        // Subjects change very infrequently — cache aggressively
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      },
+    });
   } catch (error) {
     console.error("GET /api/subjects error:", error);
     return NextResponse.json([]);

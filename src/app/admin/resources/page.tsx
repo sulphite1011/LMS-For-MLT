@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Plus, Pencil, Trash2, FileText, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Eye, Star } from "lucide-react";
 import toast from "react-hot-toast";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -16,6 +16,8 @@ interface Resource {
   subjectId: { _id: string; name: string };
   createdAt: string;
   fileData?: { fileType: string };
+  averageRating?: number | string;
+  totalRatings?: number;
 }
 
 export default function ResourcesPage() {
@@ -26,7 +28,7 @@ export default function ResourcesPage() {
 
   const fetchResources = async () => {
     try {
-      const res = await fetch("/api/resources?limit=100");
+      const res = await fetch("/api/resources?limit=100&admin=true");
       const data = await res.json();
       setResources(data.resources || []);
     } catch {
@@ -67,7 +69,7 @@ export default function ResourcesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1e293b]">Resources</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Resources</h1>
           <p className="text-gray-500 text-sm mt-1">
             Manage all learning resources
           </p>
@@ -76,7 +78,7 @@ export default function ResourcesPage() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-2 bg-[#14b8a6] hover:bg-[#0d9488] text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-md"
+            className="flex items-center gap-2 bg-teal hover:bg-teal-dark text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-md"
           >
             <Plus className="w-4 h-4" />
             Add Resource
@@ -95,7 +97,7 @@ export default function ResourcesPage() {
           </p>
           <Link
             href="/admin/resources/new"
-            className="inline-flex items-center gap-2 bg-[#14b8a6] text-white px-5 py-2.5 rounded-xl font-medium mt-4 hover:bg-[#0d9488] transition-colors"
+            className="inline-flex items-center gap-2 bg-teal text-white px-5 py-2.5 rounded-xl font-medium mt-4 hover:bg-teal-dark transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Resource
@@ -119,6 +121,9 @@ export default function ResourcesPage() {
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">
                     Created
                   </th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Rating
+                  </th>
                   <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -134,7 +139,7 @@ export default function ResourcesPage() {
                     className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
                   >
                     <td className="px-6 py-4">
-                      <span className="font-medium text-[#1e293b] line-clamp-1">
+                      <span className="font-medium text-text-primary line-clamp-1">
                         {resource.title}
                       </span>
                     </td>
@@ -152,6 +157,19 @@ export default function ResourcesPage() {
                       {new Date(resource.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
+                      {resource.totalRatings && resource.totalRatings > 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-0.5 text-yellow-500">
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                            <span className="font-bold text-xs">{resource.averageRating}</span>
+                          </div>
+                          <span className="text-[10px] text-gray-400">({resource.totalRatings})</span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-gray-300">No ratings</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">
                         <Link
                           href={`/resource/${resource._id}`}
@@ -162,7 +180,7 @@ export default function ResourcesPage() {
                         </Link>
                         <Link
                           href={`/admin/resources/${resource._id}/edit`}
-                          className="p-2 text-gray-400 hover:text-[#14b8a6] hover:bg-teal-50 rounded-lg transition-colors"
+                          className="p-2 text-gray-400 hover:text-teal hover:bg-teal-50 rounded-lg transition-colors"
                           title="Edit"
                         >
                           <Pencil className="w-4 h-4" />

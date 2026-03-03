@@ -51,3 +51,41 @@ export const MAX_FILE_SIZE = parseInt(
   process.env.MAX_FILE_SIZE || "10485760",
   10
 );
+
+export function formatDistanceToNow(date: Date | string): string {
+  const diff = (new Date(date).getTime() - new Date().getTime()) / 1000;
+  const absDiff = Math.abs(diff);
+
+  if (absDiff < 60) return "just now";
+
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "always" });
+
+  if (absDiff < 3600) return rtf.format(Math.round(diff / 60), "minute");
+  if (absDiff < 86400) return rtf.format(Math.round(diff / 3600), "hour");
+  if (absDiff < 2592000) return rtf.format(Math.round(diff / 86400), "day");
+  if (absDiff < 31536000) return rtf.format(Math.round(diff / 2592000), "month");
+  return rtf.format(Math.round(diff / 31536000), "year");
+}
+
+export function generateHandle(base: string): string {
+  // Clean the base - remove spaces, special chars, lowercase
+  const clean = base.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
+  return clean || "user";
+}
+
+export function getAvatar(imageUrl?: string | null): string {
+  if (!imageUrl || imageUrl.length < 10) return "/images/default-avatar.png";
+
+  // Clerk's default/initials URLs often contain these patterns
+  const isDefault =
+    imageUrl.includes("default-user") ||
+    imageUrl.includes("avatar_placeholder") ||
+    imageUrl.includes("initials") ||
+    // Sometimes they look like https://img.clerk.com/hex-code
+    (imageUrl.includes("clerk.com") && !imageUrl.includes("?")); // Real images usually have query params or specific paths
+
+  if (isDefault) {
+    return "/images/default-avatar.png";
+  }
+  return imageUrl;
+}

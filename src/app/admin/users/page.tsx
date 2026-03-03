@@ -12,8 +12,9 @@ interface User {
   _id: string;
   clerkId: string;
   username: string;
-  role: "superAdmin" | "admin";
+  role: "superAdmin" | "admin" | "user";
   createdAt: string;
+  isPending?: boolean;
 }
 
 export default function UsersPage() {
@@ -136,7 +137,7 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1e293b]">User Management</h1>
+          <h1 className="text-2xl font-bold text-text-primary">User Management</h1>
           <p className="text-gray-500 text-sm mt-1">
             Manage admin users (Super Admin only)
           </p>
@@ -145,7 +146,8 @@ export default function UsersPage() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-[#14b8a6] hover:bg-[#0d9488] text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-md"
+          className="flex items-center gap-2 bg-teal hover:bg-teal-dark text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-md"
+          suppressHydrationWarning
         >
           <Plus className="w-4 h-4" />
           Add Admin
@@ -210,7 +212,7 @@ export default function UsersPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
         >
-          <h2 className="font-semibold text-[#1e293b] mb-4">
+          <h2 className="font-semibold text-text-primary mb-4">
             Create New Admin
           </h2>
           <form onSubmit={handleCreateUser} className="flex gap-3">
@@ -219,13 +221,14 @@ export default function UsersPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter username"
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm"
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm"
               required
+              suppressHydrationWarning
             />
             <button
               type="submit"
               disabled={saving}
-              className="bg-[#14b8a6] hover:bg-[#0d9488] text-white px-5 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50"
+              className="bg-teal hover:bg-teal-dark text-white px-5 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50"
             >
               {saving ? "Creating..." : "Create"}
             </button>
@@ -281,28 +284,31 @@ export default function UsersPage() {
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-[#0A1929] rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                      <div className="w-9 h-9 bg-navy rounded-full flex items-center justify-center text-white font-semibold text-sm">
                         {user.username[0]?.toUpperCase()}
                       </div>
-                      <span className="font-medium text-[#1e293b]">
+                      <span className="font-medium text-text-primary">
                         {user.username}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 hidden sm:table-cell">
                     <span
-                      className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-                        user.role === "superAdmin"
-                          ? "bg-purple-50 text-purple-600"
-                          : "bg-blue-50 text-blue-600"
-                      }`}
+                      className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${user.role === "superAdmin"
+                        ? "bg-purple-50 text-purple-600"
+                        : user.role === "admin"
+                          ? "bg-blue-50 text-blue-600"
+                          : "bg-gray-100 text-gray-600"
+                        }`}
                     >
                       {user.role === "superAdmin" ? (
                         <ShieldCheck className="w-3.5 h-3.5" />
-                      ) : (
+                      ) : user.role === "admin" ? (
                         <Shield className="w-3.5 h-3.5" />
+                      ) : (
+                        <UsersIcon className="w-3.5 h-3.5" />
                       )}
-                      {user.role === "superAdmin" ? "Super Admin" : "Admin"}
+                      {user.role === "superAdmin" ? "Super Admin" : user.role === "admin" ? "Admin" : "User"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
@@ -310,11 +316,11 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
-                      {user.role !== "superAdmin" && (
+                      {user.role === "admin" && (
                         <button
                           onClick={() => setDeleteId(user._id)}
                           className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
+                          title="Revoke Admin Access"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -332,8 +338,8 @@ export default function UsersPage() {
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title="Delete Admin User"
-        message="Are you sure you want to delete this admin user? They will lose all access."
+        title="Revoke Admin Access"
+        message="Are you sure you want to revoke admin access for this user? They will still be able to use the site as a regular user."
         loading={deleting}
       />
     </div>
