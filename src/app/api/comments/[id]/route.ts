@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Comment from "@/models/Comment";
 import { getAuthUser } from "@/lib/auth";
+import { mergeSingleCommentUserInfo } from "@/lib/comments";
 
 export async function PATCH(
   req: NextRequest,
@@ -83,7 +84,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
-    return NextResponse.json(comment);
+    const mergedComment = await mergeSingleCommentUserInfo(comment.toObject());
+    return NextResponse.json(mergedComment);
   } catch (error: any) {
     console.error("[Comment Action Error]:", error);
     return NextResponse.json(

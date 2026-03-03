@@ -5,6 +5,7 @@ import { ThumbsUp, Reply, Send, Star, Trash2, AtSign, CornerDownRight } from "lu
 import { formatDistanceToNow, getAvatar } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useAuthState } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
 
 interface Reply {
@@ -59,6 +60,13 @@ export function CommentItem({
   allCommenters = [],
 }: CommentItemProps) {
   const { user: currentUser } = useUser();
+  const { userImage: authImage, username: authUsername } = useAuthState();
+
+  // Live Sync: If this is the current user's comment, use the latest info from AuthState
+  const isCurrentUser = currentUser?.id === comment.userId;
+  const displayName = isCurrentUser ? (authUsername || comment.userName) : comment.userName;
+  const displayImage = isCurrentUser ? (authImage || comment.userImage) : comment.userImage;
+
   const isSuperAdmin = currentUser?.primaryEmailAddress?.emailAddress === "hamadkhadimdgkmc@gmail.com";
   const isAuthor = currentUser?.id === comment.userId;
   const isResourceAuthor = comment.userId === resourceAuthorId;
@@ -154,8 +162,8 @@ export function CommentItem({
         {/* Avatar */}
         <div className="shrink-0">
           <img
-            src={getAvatar(comment.userImage)}
-            alt={comment.userName}
+            src={getAvatar(displayImage)}
+            alt={displayName}
             className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 border-slate-50 shadow-sm"
             onError={e => (e.currentTarget.src = "/images/default-avatar.png")}
           />
@@ -165,7 +173,7 @@ export function CommentItem({
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex flex-col">
               <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="font-semibold text-slate-800 text-base truncate">{comment.userName}</h4>
+                <h4 className="font-semibold text-slate-800 text-base truncate">{displayName}</h4>
                 {isResourceAuthor && (
                   <span className="bg-teal/10 text-teal text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-teal/20">Author</span>
                 )}
@@ -255,12 +263,16 @@ export function CommentItem({
                   ? comment.replies[parseInt(reply.parentReplyId)]
                   : null;
 
+                const isCurrentReplyUser = currentUser?.id === reply.userId;
+                const replyDisplayName = isCurrentReplyUser ? (authUsername || reply.userName) : reply.userName;
+                const replyDisplayImage = isCurrentReplyUser ? (authImage || reply.userImage) : reply.userImage;
+
                 return (
                   <motion.div key={idx} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 group/reply">
                     <div className="shrink-0">
                       <img
-                        src={getAvatar(reply.userImage)}
-                        alt={reply.userName}
+                        src={getAvatar(replyDisplayImage)}
+                        alt={replyDisplayName}
                         className="w-8 h-8 rounded-full object-cover border-2 border-slate-50"
                         onError={e => (e.currentTarget.src = "/images/default-avatar.png")}
                       />
@@ -268,7 +280,7 @@ export function CommentItem({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1 mb-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-slate-800">{reply.userName}</span>
+                          <span className="text-sm font-semibold text-slate-800">{replyDisplayName}</span>
                           {reply.userId === resourceAuthorId && (
                             <span className="bg-teal/10 text-teal text-[9px] font-bold px-1 py-0.5 rounded border border-teal/20">Author</span>
                           )}

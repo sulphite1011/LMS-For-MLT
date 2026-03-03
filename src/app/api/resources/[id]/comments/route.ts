@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Comment from "@/models/Comment";
+import User from "@/models/User";
 import { getAuthUser } from "@/lib/auth";
+import { mergeCommentUserInfo, mergeSingleCommentUserInfo } from "@/lib/comments";
 import mongoose from "mongoose";
 
 export async function GET(
@@ -16,7 +18,8 @@ export async function GET(
       .sort({ createdAt: -1 })
       .lean();
 
-    return NextResponse.json(comments);
+    const mergedComments = await mergeCommentUserInfo(comments);
+    return NextResponse.json(mergedComments);
   } catch (error: any) {
     return NextResponse.json(
       { error: "Failed to fetch comments" },
@@ -56,7 +59,8 @@ export async function POST(
       replies: [],
     });
 
-    return NextResponse.json(newComment, { status: 201 });
+    const mergedComment = await mergeSingleCommentUserInfo(newComment.toObject());
+    return NextResponse.json(mergedComment, { status: 201 });
   } catch (error: any) {
     console.error("[Post Comment Error]:", error);
     return NextResponse.json(

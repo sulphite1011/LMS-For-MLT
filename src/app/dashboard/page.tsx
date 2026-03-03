@@ -206,8 +206,8 @@ export default function DashboardPage() {
   };
 
   const startEdit = () => {
-    console.log("[Dashboard] startEdit called. Profile:", profile);
-    setEditUsername(profile?.username || "");
+    console.log("[Dashboard] startEdit called. Profile:", profile, "ClerkUser:", clerkUser?.username);
+    setEditUsername(profile?.username || clerkUser?.username || "");
     setEditBio(profile?.bio || "");
     setAvatarPreview(null);
     setAvatarFile(null);
@@ -284,7 +284,14 @@ export default function DashboardPage() {
             <div className="flex-1 text-center sm:text-left">
               {editMode ? (
                 <div className="space-y-2">
-                  <input type="text" value={editUsername} onChange={e => setEditUsername(e.target.value)} className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white text-xl font-bold w-full placeholder:text-white/50 focus:outline-none focus:border-teal/60" placeholder="Username" maxLength={30} />
+                  <div className="space-y-1">
+                    <div className="relative">
+                      <input type="text" value={editUsername} onChange={e => setEditUsername(e.target.value)} className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white text-xl font-bold w-full placeholder:text-white/50 focus:outline-none focus:border-teal/60" placeholder="Username" maxLength={30} />
+                    </div>
+                    <p className="text-[10px] text-white/40 px-1 italic flex items-center gap-1">
+                      <Activity className="w-3 h-3" /> Note: Username can only be changed once every 30 days.
+                    </p>
+                  </div>
                   <textarea value={editBio} onChange={e => setEditBio(e.target.value)} placeholder="Tell us about yourself..." rows={2} className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white/90 text-sm w-full placeholder:text-white/40 focus:outline-none focus:border-teal/60 resize-none" maxLength={300} />
                 </div>
               ) : (

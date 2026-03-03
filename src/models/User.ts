@@ -5,6 +5,7 @@ export interface IUserDoc extends mongoose.Document {
   username: string;
   userHandle?: string; // @handle for mentions (unique, like Twitter handle)
   userHandleLastChanged?: Date; // track 15-day change restriction
+  usernameLastChanged?: Date; // track 30-day change restriction
   userImage?: string;
   customAvatar?: string;
   bio?: string;
@@ -22,6 +23,7 @@ const UserSchema = new Schema<IUserDoc>({
   username: { type: String, required: true, unique: true },
   userHandle: { type: String, unique: true, sparse: true, lowercase: true, trim: true }, // @handle
   userHandleLastChanged: { type: Date },
+  usernameLastChanged: { type: Date },
   userImage: { type: String },
   customAvatar: { type: String },
   bio: { type: String, maxlength: 300 },

@@ -9,6 +9,7 @@ import { requireAdmin, getAuthUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
+    console.log("[API /resources] Starting GET...");
     await dbConnect();
 
     const { searchParams } = new URL(req.url);
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ resources: resourcesWithRatings, total, pages: Math.ceil(total / limit), page });
   } catch (error) {
     console.error("GET /api/resources error:", error);
-    return NextResponse.json({ error: "Failed to fetch resources" }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
