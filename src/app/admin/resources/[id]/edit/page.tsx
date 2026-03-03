@@ -19,6 +19,9 @@ import {
 } from "lucide-react";
 import { getYoutubeThumbnail } from "@/lib/utils";
 
+interface FileEntry { file?: File; name: string; size?: number; id: string; isExisting?: boolean; }
+interface ExternalLinkEntry { label: string; url: string; id: string; }
+
 const resourceTypes = ["Notes", "Video", "PDF", "Reference", "Quiz"] as const;
 
 export default function EditResourcePage() {
@@ -33,12 +36,12 @@ export default function EditResourcePage() {
   const [description, setDescription] = useState("");
   const [youtubeUrls, setYoutubeUrls] = useState<string[]>([""]);
   const [bannerImageUrl, setBannerImageUrl] = useState("");
-  const [fileMode, setFileMode] = useState<"upload" | "external">("upload");
-  const [externalLink, setExternalLink] = useState("");
-  const [file, setFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [existingFileName, setExistingFileName] = useState<string | null>(null);
+
+  const [pdfFiles, setPdfFiles] = useState<FileEntry[]>([]);
+  const [externalLinks, setExternalLinks] = useState<ExternalLinkEntry[]>([]);
+  const [removedFileIds, setRemovedFileIds] = useState<string[]>([]); // Optional: track removals
 
   useEffect(() => {
     fetch(`/api/resources/${id}`)
@@ -55,11 +58,42 @@ export default function EditResourcePage() {
         if (resData.bannerImageUrl) {
           setBannerPreview(resData.bannerImageUrl);
         }
-        if (resData.fileData?.fileType === "external") {
-          setFileMode("external");
-          setExternalLink(resData.fileData.externalLink || "");
+
+        // Handle existing files
+        const existing: FileEntry[] = [];
+        if (resData.files && resData.files.length > 0) {
+          resData.files.forEach((f: any, i: number) => {
+            existing.push({
+              name: f.fileName || `File ${i + 1}`,
+              size: f.fileSize,
+              id: `existing-${i}`,
+              isExisting: true
+            });
+          });
         } else if (resData.fileData?.fileName) {
-          setExistingFileName(resData.fileData.fileName);
+          existing.push({
+            name: resData.fileData.fileName,
+            size: resData.fileData.fileSize,
+            id: "existing-0",
+            isExisting: true
+          });
+        }
+        setPdfFiles(existing);
+
+        // Handle existing links
+        if (resData.externalLinks && resData.externalLinks.length > 0) {
+          setExternalLinks(resData.externalLinks.map((l: any, i: number) => ({
+            ...l,
+            id: l._id || `el-${i}`
+          })));
+        } else if (resData.fileData?.fileType === "external" && resData.fileData.externalLink) {
+          setExternalLinks([{
+            label: "External Link",
+            url: resData.fileData.externalLink,
+            id: "el-0"
+          }]);
+        } else {
+          setExternalLinks([{ label: "", url: "", id: "el-0" }]);
         }
       })
       .catch(() => toast.error("Failed to load resource"))
@@ -67,15 +101,16 @@ export default function EditResourcePage() {
   }, [id]);
 
   const onFileDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      const f = acceptedFiles[0];
-      if (f.size > 10 * 1024 * 1024) {
-        toast.error("File must be under 10MB");
-        return;
-      }
-      setFile(f);
-      setExistingFileName(null);
-    }
+    const newFiles = acceptedFiles.filter(f => f.size <= 10 * 1024 * 1024)
+      .map(f => ({
+        file: f,
+        name: f.name,
+        size: f.size,
+        id: `pdf-${Date.now()}-${Math.random()}`,
+        isExisting: false
+      }));
+    if (acceptedFiles.some(f => f.size > 10 * 1024 * 1024)) toast.error("Some files exceed 10MB");
+    setPdfFiles(prev => [...prev, ...newFiles]);
   }, []);
 
   const onBannerDrop = useCallback((acceptedFiles: File[]) => {
@@ -95,7 +130,7 @@ export default function EditResourcePage() {
       "application/pdf": [".pdf"],
       "image/*": [".jpg", ".jpeg", ".png"],
     },
-    maxFiles: 1,
+    multiple: true,
   });
 
   const {
@@ -131,11 +166,22 @@ export default function EditResourcePage() {
         formData.append("bannerImage", bannerFile);
       }
 
-      if (fileMode === "upload" && file) {
-        formData.append("file", file);
-      } else if (fileMode === "external" && externalLink) {
-        formData.append("externalLink", externalLink);
+      // Handle files: send new ones, maybe we need a way to tell the server which old ones were kept
+      // For now, if no NEW files are added, the server doesn't overwrite.
+      // But if any ARE added, we might want to send the full set?
+      // Simple approach: if we have NEW files, send them. If we removed ALL files, send remove flag.
+      const newFiles = pdfFiles.filter(f => f.file && !f.isExisting);
+      newFiles.forEach(f => formData.append("files", f.file!));
+
+      if (pdfFiles.length === 0) {
+        formData.append("removeFile", "true");
       }
+
+      const validLinks = externalLinks.filter(l => l.url.trim());
+      formData.append("externalLinks", JSON.stringify(validLinks.map(l => ({
+        label: l.label.trim() || "External Link",
+        url: l.url.trim(),
+      }))));
 
       const res = await fetch(`/api/resources/${id}`, {
         method: "PUT",
@@ -280,62 +326,67 @@ export default function EditResourcePage() {
           />
         </div>
 
-        {/* File */}
+        {/* PDF Files */}
         <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg">Resource File</h2>
-          <div className="flex bg-gray-100 rounded-xl p-1">
-            <button type="button" onClick={() => setFileMode("upload")} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${fileMode === "upload" ? "bg-white text-[#1e293b] shadow-sm" : "text-gray-500"}`}>
-              <Upload className="w-4 h-4" />Upload PDF
-            </button>
-            <button type="button" onClick={() => setFileMode("external")} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${fileMode === "external" ? "bg-white text-[#1e293b] shadow-sm" : "text-gray-500"}`}>
-              <LinkIcon className="w-4 h-4" />External Link
-            </button>
+          <h2 className="font-semibold text-[#1e293b] text-lg flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#14b8a6]" /> PDF/Image Files
+            <span className="text-xs text-gray-400 font-normal">(up to 5 files, 10MB each)</span>
+          </h2>
+          <div {...getFileRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isFileDragActive ? "border-[#14b8a6] bg-[#14b8a6]/5" : "border-gray-200 hover:border-[#14b8a6]"}`}>
+            <input {...getFileInputProps()} />
+            <Upload className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">{isFileDragActive ? "Drop files here..." : "Drag & drop PDFs or click to browse"}</p>
+            <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG · Multiple files allowed</p>
           </div>
+          {pdfFiles.length > 0 && (
+            <div className="space-y-2">
+              {pdfFiles.map((f) => (
+                <div key={f.id} className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-2.5">
+                  <FileText className={`w-5 h-5 ${f.isExisting ? "text-slate-400" : "text-[#14b8a6]"} shrink-0`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate">{f.name}</p>
+                    {f.size && <p className="text-xs text-gray-400">{(f.size / 1024 / 1024).toFixed(2)} MB {f.isExisting && "(Existing)"}</p>}
+                  </div>
+                  <button type="button" onClick={() => setPdfFiles(prev => prev.filter(item => item.id !== f.id))} className="p-1 hover:bg-red-50 rounded-full"><X className="w-4 h-4 text-red-400" /></button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-          {fileMode === "upload" ? (
-            <div {...getFileRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isFileDragActive ? "border-[#14b8a6] bg-teal-50/50" : "border-gray-200 hover:border-[#14b8a6]"}`}>
-              <input {...getFileInputProps()} />
-              {file ? (
-                <div className="flex items-center justify-center gap-3">
-                  <FileText className="w-8 h-8 text-[#14b8a6]" />
-                  <div className="text-left">
-                    <p className="font-medium text-[#1e293b] text-sm">{file.name}</p>
-                    <p className="text-xs text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                  </div>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setFile(null); }} className="p-1 hover:bg-red-50 rounded-full">
-                    <X className="w-4 h-4 text-red-400" />
-                  </button>
-                </div>
-              ) : existingFileName ? (
-                <div className="flex items-center justify-center gap-3">
-                  <FileText className="w-8 h-8 text-[#14b8a6]" />
-                  <div className="text-left">
-                    <p className="font-medium text-[#1e293b] text-sm">{existingFileName}</p>
-                    <p className="text-xs text-gray-400">Current file - drop new file to replace</p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <Upload className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">Drag & drop or click to browse</p>
-                  <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG (max 10MB)</p>
-                </>
+        {/* External Links */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
+          <h2 className="font-semibold text-text-primary text-lg flex items-center gap-2">
+            <LinkIcon className="w-5 h-5 text-teal" /> External Links
+            <span className="text-xs text-gray-400 font-normal">(Google Drive, GitHub…)</span>
+          </h2>
+          {externalLinks.map((link, i) => (
+            <div key={link.id} className="flex gap-3 items-start">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input type="text" value={link.label} onChange={e => {
+                  const items = [...externalLinks];
+                  items[i].label = e.target.value;
+                  setExternalLinks(items);
+                }} placeholder="Label (e.g. Study Notes)" className="px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm" />
+                <input type="url" value={link.url} onChange={e => {
+                  const items = [...externalLinks];
+                  items[i].url = e.target.value;
+                  setExternalLinks(items);
+                }} placeholder="https://drive.google.com/…" className="sm:col-span-2 px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm" />
+              </div>
+              {externalLinks.length > 1 && (
+                <button type="button" onClick={() => setExternalLinks(prev => prev.filter(l => l.id !== link.id))} className="p-2 hover:bg-red-50 rounded-lg mt-0.5"><X className="w-4 h-4 text-red-400" /></button>
               )}
             </div>
-          ) : (
-            <input
-              type="url"
-              value={externalLink}
-              onChange={(e) => setExternalLink(e.target.value)}
-              placeholder="https://drive.google.com/... or https://github.com/..."
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm"
-            />
-          )}
+          ))}
+          <button type="button" onClick={() => setExternalLinks(prev => [...prev, { label: "", url: "", id: `el-${Date.now()}` }])} className="flex items-center gap-2 text-sm text-teal hover:text-teal-dark font-medium">
+            <Plus className="w-4 h-4" /> Add Another Link
+          </button>
         </div>
 
         {/* YouTube */}
         <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg flex items-center gap-2">
+          <h2 className="font-semibold text-text-primary text-lg flex items-center gap-2">
             <Youtube className="w-5 h-5 text-red-500" />YouTube Videos
           </h2>
           {youtubeUrls.map((url, i) => (
@@ -346,7 +397,7 @@ export default function EditResourcePage() {
                   value={url}
                   onChange={(e) => { const u = [...youtubeUrls]; u[i] = e.target.value; setYoutubeUrls(u); }}
                   placeholder="https://www.youtube.com/watch?v=..."
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm"
                 />
                 {url && getYoutubeThumbnail(url) && (
                   <img src={getYoutubeThumbnail(url)!} alt="Thumbnail" className="mt-2 w-32 h-20 object-cover rounded-lg" />
@@ -359,7 +410,7 @@ export default function EditResourcePage() {
               )}
             </div>
           ))}
-          <button type="button" onClick={() => setYoutubeUrls([...youtubeUrls, ""])} className="flex items-center gap-2 text-sm text-[#14b8a6] hover:text-[#0d9488] font-medium">
+          <button type="button" onClick={() => setYoutubeUrls([...youtubeUrls, ""])} className="flex items-center gap-2 text-sm text-teal hover:text-teal-dark font-medium">
             <Plus className="w-4 h-4" />Add Another Video
           </button>
         </div>
@@ -369,7 +420,7 @@ export default function EditResourcePage() {
           <button type="button" onClick={() => router.back()} className="px-6 py-2.5 rounded-xl font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
             Cancel
           </button>
-          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={saving} className="flex items-center gap-2 bg-[#14b8a6] hover:bg-[#0d9488] text-white px-8 py-2.5 rounded-xl font-medium transition-colors shadow-md disabled:opacity-50">
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={saving} className="flex items-center gap-2 bg-teal hover:bg-teal-dark text-white px-8 py-2.5 rounded-xl font-medium transition-colors shadow-md disabled:opacity-50">
             {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Saving...</> : <><Check className="w-4 h-4" />Update Resource</>}
           </motion.button>
         </div>

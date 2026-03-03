@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import ResourceDetailClient from "./ResourceDetailClient";
 
-const BASE_URL = "https://lms-for-mlt.vercel.app";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://lms-for-mlt.vercel.app');
 
 interface Props {
   params: Promise<{ id: string }>;
