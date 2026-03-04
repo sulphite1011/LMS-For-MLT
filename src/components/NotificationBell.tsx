@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Bell, X, BookOpen, MessageCircle, Archive, Trash2 } from "lucide-react";
+import { Bell, X, BookOpen, MessageCircle, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -77,18 +77,6 @@ export function NotificationBell() {
     }
   };
 
-  const archiveNotification = async (id: string) => {
-    try {
-      await fetch("/api/notifications", {
-        method: "PATCH",
-        body: JSON.stringify({ notificationId: id, action: "archive" }),
-      });
-      setNotifications(notifications.filter((n) => n._id !== id));
-      setUnreadCount((prev) => notifications.find(n => n._id === id && !n.isRead) ? Math.max(0, prev - 1) : prev);
-    } catch (error) {
-      console.error("Failed to archive notification:", error);
-    }
-  };
 
   const deleteNotification = async (id: string) => {
     try {
@@ -115,19 +103,6 @@ export function NotificationBell() {
     }
   };
 
-  const archiveAllNotifications = async () => {
-    try {
-      await fetch("/api/notifications", {
-        method: "PATCH",
-        body: JSON.stringify({ action: "archive_all" }),
-      });
-      setNotifications([]);
-      setUnreadCount(0);
-      toast.success("Notifications archived");
-    } catch (error) {
-      console.error("Failed to archive all notifications:", error);
-    }
-  };
 
   const subscribeToPush = async () => {
     const success = await subscribeUserToPush();
@@ -172,7 +147,7 @@ export function NotificationBell() {
                 opacity: 0,
                 y: 10,
               }}
-              className="fixed top-16 inset-x-4 md:absolute md:inset-auto md:right-0 md:top-full mt-2 w-auto md:w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              className="absolute top-full right-0 mt-3 w-[calc(100vw-2rem)] md:w-96 max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
             >
               <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-y-3 bg-gray-50/50">
                 <h3 className="font-bold text-gray-900 shrink-0">Notifications</h3>
@@ -284,26 +259,15 @@ export function NotificationBell() {
                             </div>
                           </Link>
 
-                          {/* Action Buttons (Visible on hover) */}
-                          <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                archiveNotification(n._id);
-                              }}
-                              className="p-1.5 text-gray-400 hover:text-teal hover:bg-teal/5 rounded-lg transition-colors"
-                              title="Archive"
-                            >
-                              <Archive className="w-4 h-4" />
-                            </button>
+                          {/* Action Buttons (Visible on hover on PC, Always on mobile) */}
+                          <div className="flex flex-col gap-1 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
                                 deleteNotification(n._id);
                               }}
-                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 sm:text-gray-400 rounded-lg transition-colors bg-gray-50 md:bg-transparent"
                               title="Delete"
                             >
                               <Trash2 className="w-4 h-4" />

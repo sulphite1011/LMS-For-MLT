@@ -13,10 +13,9 @@ export async function GET() {
 
     await dbConnect();
 
-    // Fetch latest 20 non-archived notifications
+    // Fetch latest 20 notifications
     const notifications = await Notification.find({
-      recipientId: userId,
-      isArchived: { $ne: true }
+      recipientId: userId
     })
       .sort({ createdAt: -1 })
       .limit(20)
@@ -29,7 +28,7 @@ export async function GET() {
   }
 }
 
-// PATCH /api/notifications - Update notification status (read/archived)
+// PATCH /api/notifications - Update notification status (read)
 export async function PATCH(req: NextRequest) {
   try {
     const { userId } = await auth();
@@ -40,31 +39,19 @@ export async function PATCH(req: NextRequest) {
     await dbConnect();
 
     const body = await req.json();
-    const { notificationId, action } = body;
+    const { notificationId } = body;
 
     if (notificationId) {
-      const updateData: any = {};
-      if (action === "archive") updateData.isArchived = true;
-      else updateData.isRead = true;
-
       await Notification.updateOne(
         { _id: notificationId, recipientId: userId },
-        { $set: updateData }
+        { $set: { isRead: true } }
       );
     } else {
-      // Bulk actions
-      if (action === "archive_all") {
-        await Notification.updateMany(
-          { recipientId: userId, isArchived: false },
-          { $set: { isArchived: true } }
-        );
-      } else {
-        // Mark all as read
-        await Notification.updateMany(
-          { recipientId: userId, isRead: false },
-          { $set: { isRead: true } }
-        );
-      }
+      // Mark all as read
+      await Notification.updateMany(
+        { recipientId: userId, isRead: false },
+        { $set: { isRead: true } }
+      );
     }
 
     return NextResponse.json({ success: true });

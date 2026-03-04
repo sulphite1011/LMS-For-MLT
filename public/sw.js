@@ -3,10 +3,12 @@ self.addEventListener("push", function (event) {
     const data = event.data.json();
     const options = {
       body: data.message,
-      icon: "/images/logo.png", // Ensure this exists
-      badge: "/images/badge.png", // Ensure this exists
+      icon: "/images/logo.png",
+      badge: "/images/badge.png",
+      tag: "lms-notification", // Groups notifications
+      renotify: true, // Vibrates for each new message in same tag
       data: {
-        url: data.link || "/",
+        url: data.link || "/dashboard",
       },
     };
 
@@ -16,5 +18,28 @@ self.addEventListener("push", function (event) {
 
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
-  event.waitUntil(clients.openWindow(event.notification.data.url));
+  const urlToOpen = new URL(event.notification.data.url, self.location.origin).href;
+
+  const promiseChain = clients.matchAll({
+    type: "window",
+    includeUncontrolled: true
+  }).then((windowClients) => {
+    let matchingClient = null;
+
+    for (let i = 0; i < windowClients.length; i++) {
+      const windowClient = windowClients[i];
+      if (windowClient.url === urlToOpen) {
+        matchingClient = windowClient;
+        break;
+      }
+    }
+
+    if (matchingClient) {
+      return matchingClient.focus();
+    } else {
+      return clients.openWindow(urlToOpen);
+    }
+  });
+
+  event.waitUntil(promiseChain);
 });
