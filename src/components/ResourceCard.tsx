@@ -199,7 +199,10 @@ export function ResourceCard({
                 </span>
               </div>
               {createdBy && (
-                <span className="font-medium truncate max-w-[130px] text-teal-600 bg-teal-50/80 px-1.5 py-0.5 rounded-md text-[11px] border border-teal-100">By {createdBy.username}</span>
+                <span className="flex items-center gap-1 truncate max-w-[150px]" title={`Created by ${createdBy.username}`}>
+                  <svg className="w-3 h-3 text-teal shrink-0" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4" /><path d="M20 21a8 8 0 1 0-16 0" /></svg>
+                  <span className="font-bold text-teal truncate text-[11px]">{createdBy.username}</span>
+                </span>
               )}
             </div>
 
