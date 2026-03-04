@@ -1,4 +1,5 @@
-import mongoose, { Schema, Model } from "mongoose";
+import mongoose, { Schema, Model, CallbackError } from "mongoose";
+import Comment from "./Comment";
 
 export interface IFileEntry {
   fileType: "pdf" | "image" | "external";
@@ -93,6 +94,29 @@ const ResourceSchema = new Schema<IResourceDoc>(
     timestamps: true,
   }
 );
+
+// Cascade delete comments when a resource is deleted
+ResourceSchema.pre("deleteOne", { document: true, query: false }, async function (next) {
+  try {
+    await Comment.deleteMany({ resourceId: this._id });
+    next();
+  } catch (err: any) {
+    next(err as CallbackError);
+  }
+});
+
+// Also handle findOneAndDelete if used
+ResourceSchema.pre("findOneAndDelete", async function (next) {
+  try {
+    const docToId = this.getQuery()._id;
+    if (docToId) {
+      await Comment.deleteMany({ resourceId: docToId });
+    }
+    next();
+  } catch (err: any) {
+    next(err as CallbackError);
+  }
+});
 
 ResourceSchema.index({ title: "text", description: "text" });
 // Composite indexes for filtered + sorted queries (e.g. ?subject=X&sort=newest)

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Comment from "@/models/Comment";
 import { getAuthUser } from "@/lib/auth";
+import { handleApiError, AppErrors } from "@/lib/api-errors";
 import { mergeSingleCommentUserInfo } from "@/lib/comments";
 
 export async function PATCH(
@@ -11,24 +12,21 @@ export async function PATCH(
   try {
     const { id } = await params;
     const user = await getAuthUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!user) throw AppErrors.Unauthorized();
 
     const { action, content, replyIndex, parentReplyId, mentionedUser } = await req.json();
     await dbConnect();
 
     const comment = await Comment.findById(id);
     if (!comment) {
-      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+      throw AppErrors.NotFound("Comment not found");
     }
 
     if (action === "like") {
       if (typeof replyIndex === "number") {
         // Like a reply
         const reply = comment.replies[replyIndex];
-        if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+        if (!reply) throw AppErrors.NotFound("Reply not found");
 
         if (!reply.likes) reply.likes = [];
         const index = reply.likes.indexOf(user.clerkId);
@@ -47,9 +45,11 @@ export async function PATCH(
         }
       }
       await comment.save();
+      const merged = await mergeSingleCommentUserInfo(comment);
+      return NextResponse.json(merged);
     } else if (action === "reply") {
       if (!content) {
-        return NextResponse.json({ error: "Reply content is required" }, { status: 400 });
+        throw AppErrors.BadRequest("Reply content is required");
       }
       // Add the new reply to the comment
       comment.replies.push({
@@ -82,34 +82,30 @@ export async function PATCH(
       await comment.save();
     } else if (action === "delete_reply") {
       if (typeof replyIndex !== "number") {
-        return NextResponse.json({ error: "Reply index is required" }, { status: 400 });
+        throw AppErrors.BadRequest("Reply index is required");
       }
 
       const reply = comment.replies[replyIndex];
-      if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+      if (!reply) throw AppErrors.NotFound("Reply not found");
 
       // Only owner of reply or super admin can delete
       const isOwner = reply.userId === user.clerkId;
       const isSuperAdmin = user.role === "superAdmin";
 
       if (!isOwner && !isSuperAdmin) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        throw AppErrors.Forbidden();
       }
 
       comment.replies.splice(replyIndex, 1);
       await comment.save();
     } else {
-      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+      throw AppErrors.BadRequest("Invalid action");
     }
 
     const mergedComment = await mergeSingleCommentUserInfo(comment.toObject());
     return NextResponse.json(mergedComment);
-  } catch (error: any) {
-    console.error("[Comment Action Error]:", error);
-    return NextResponse.json(
-      { error: "Failed to perform action" },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -132,21 +128,16 @@ export async function DELETE(
       return NextResponse.json({ error: "Comment not found" }, { status: 404 });
     }
 
-    // Only author or super admin can delete
     const isOwner = comment.userId === user.clerkId;
     const isSuperAdmin = user.role === "superAdmin";
 
     if (!isOwner && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      throw AppErrors.Forbidden();
     }
 
     await Comment.findByIdAndDelete(id);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("[Comment Delete Error]:", error);
-    return NextResponse.json(
-      { error: "Failed to delete comment" },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

@@ -6,10 +6,10 @@ import Comment from "@/models/Comment";
 import User from "@/models/User";
 import mongoose from "mongoose";
 import { requireAdmin, getAuthUser } from "@/lib/auth";
+import { handleApiError, AppErrors } from "@/lib/api-errors";
 
 export async function GET(req: NextRequest) {
   try {
-    console.log("[API /resources] Starting GET...");
     await dbConnect();
 
     const { searchParams } = new URL(req.url);
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const isAdminDashboard = searchParams.get("admin") === "true";
 
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, any> = {};
 
     if (search) {
       filter.$or = [
@@ -53,7 +53,6 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (resources.length === 0) {
-      console.log("[API /resources] No resources found for filter:", JSON.stringify(filter));
       return NextResponse.json({ resources: [], total: 0, pages: 0, page });
     }
 
@@ -65,12 +64,8 @@ export async function GET(req: NextRequest) {
 
     const resourcesWithRatings = resources.map(resource => {
       const stats = ratingStats.find(s => String(s._id) === String(resource._id));
-      // Defensive mapping for resourceType
-      const resourceType = resource.resourceType || (resource as any).sourceType || "Notes";
-
       return {
         ...resource,
-        resourceType,
         averageRating: stats ? Number(stats.averageRating.toFixed(1)) : 0,
         totalRatings: stats ? stats.totalRatings : 0
       };
@@ -80,15 +75,12 @@ export async function GET(req: NextRequest) {
       { resources: resourcesWithRatings, total, pages: Math.ceil(total / limit), page },
       {
         headers: {
-          // Cache for 5s at the edge; serve stale for 60s while revalidating in the background.
-          // Authenticated/admin requests bypass this via Vercel's auth headers.
           "Cache-Control": "public, s-maxage=5, stale-while-revalidate=60",
         },
       }
     );
   } catch (error) {
-    console.error("GET /api/resources error:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -105,20 +97,13 @@ export async function POST(req: NextRequest) {
     const bannerImageUrl = formData.get("bannerImageUrl") as string;
     const externalLinksRaw = formData.get("externalLinks") as string;
     const semester = parseInt(formData.get("semester") as string || "0");
-    // Legacy single external link
     const legacyExternalLink = formData.get("externalLink") as string;
     const bannerFile = formData.get("bannerImage") as File | null;
-
-    // Multiple file uploads
     const files = formData.getAll("files") as File[];
-    // Legacy single file
     const legacyFile = formData.get("file") as File | null;
 
     if (!title || !subjectName || !resourceType) {
-      return NextResponse.json(
-        { error: "Title, subject, and resource type are required" },
-        { status: 400 }
-      );
+      throw AppErrors.BadRequest("Title, subject, and resource type are required");
     }
 
     const youtubeUrls = youtubeUrlsRaw ? JSON.parse(youtubeUrlsRaw).filter(Boolean) : [];
@@ -131,7 +116,7 @@ export async function POST(req: NextRequest) {
       { upsert: true, new: true }
     );
 
-    const resourceData: Record<string, unknown> = {
+    const resourceData: any = {
       title: title.trim(),
       subjectId: subject._id,
       resourceType,
@@ -146,11 +131,9 @@ export async function POST(req: NextRequest) {
 
     if (bannerFile && bannerFile.size > 0) {
       const bannerBuffer = Buffer.from(await bannerFile.arrayBuffer());
-      const bannerBase64 = `data:${bannerFile.type};base64,${bannerBuffer.toString("base64")}`;
-      resourceData.bannerImageUrl = bannerBase64;
+      resourceData.bannerImageUrl = `data:${bannerFile.type};base64,${bannerBuffer.toString("base64")}`;
     }
 
-    // Handle multiple files
     const maxSize = parseInt(process.env.MAX_FILE_SIZE || "10485760");
     const processedFiles = [];
     const allFiles = files.length > 0 ? files : (legacyFile ? [legacyFile] : []);
@@ -158,7 +141,7 @@ export async function POST(req: NextRequest) {
     for (const file of allFiles) {
       if (!file || file.size === 0) continue;
       if (file.size > maxSize) {
-        return NextResponse.json({ error: `File "${file.name}" exceeds 10MB limit` }, { status: 400 });
+        throw AppErrors.BadRequest(`File "${file.name}" exceeds 10MB limit`);
       }
       const buffer = Buffer.from(await file.arrayBuffer());
       processedFiles.push({
@@ -171,63 +154,43 @@ export async function POST(req: NextRequest) {
     }
     resourceData.files = processedFiles;
 
-    // Handle external links
-    let parsedExternalLinks: { label: string; url: string; id?: string }[] = [];
+    if (processedFiles.length > 0) {
+      resourceData.fileData = processedFiles[0];
+    }
+
+    let parsedExternalLinks = [];
     if (externalLinksRaw) {
-      try {
-        parsedExternalLinks = JSON.parse(externalLinksRaw).filter((l: any) => l.url?.trim());
-      } catch (e) {
-        console.error("Failed to parse externalLinks json", e);
-      }
+      parsedExternalLinks = JSON.parse(externalLinksRaw).filter((l: any) => l.url?.trim());
     } else if (legacyExternalLink) {
       parsedExternalLinks = [{ label: "External Link", url: legacyExternalLink }];
     }
 
-    // Create new externalLinks objects omitting internal tracking IDs
-    resourceData.externalLinks = parsedExternalLinks.map(l => ({
+    resourceData.externalLinks = parsedExternalLinks.map((l: any) => ({
       label: l.label,
       url: l.url
     }));
 
-    // Legacy fileData for BC (use first file if present)
-    if (processedFiles.length > 0) {
-      resourceData.fileData = processedFiles[0];
-    } else if (parsedExternalLinks.length > 0) {
-      resourceData.fileData = { fileType: "external", externalLink: parsedExternalLinks[0].url };
-    }
-
     const resource = await Resource.create(resourceData);
 
-    // Trigger Notifications
+    // Notifications logic
     if (resource.semester) {
       try {
         const { sendNotification } = await import("@/lib/notifications");
         const sem = resource.semester;
         let query: any = { clerkId: { $ne: user.clerkId } };
 
-        if (typeof sem === "number" || (!isNaN(Number(sem)) && sem !== "")) {
-          const semNum = Number(sem);
+        if (typeof sem === "number") {
           query.$or = [
             { "notificationPreferences.receiveAll": true },
-            { "notificationPreferences.subscribedSemesters": semNum },
-            { primarySemester: semNum }
+            { "notificationPreferences.subscribedSemesters": sem },
+            { primarySemester: sem }
           ];
-        } else if (String(sem).toLowerCase() === "general") {
-          query.$or = [
-            { "notificationPreferences.receiveAll": true },
-            { "notificationPreferences.receiveGeneral": true }
-          ];
-        } else {
-          // Custom tag (e.g. "Club", "Announcement")
-          // Currently only notify 'receiveAll' users for custom tags
-          query["notificationPreferences.receiveAll"] = true;
         }
 
         const usersToNotify = await User.find(query).select("clerkId");
-
         if (usersToNotify.length > 0) {
-          const semLabel = typeof sem === "number" ? `Semester ${sem}` : sem;
-          const promises = usersToNotify.map((u) =>
+          const semLabel = typeof sem === "number" ? `Semester ${sem}` : String(sem);
+          await Promise.all(usersToNotify.map(u =>
             sendNotification({
               recipientId: u.clerkId,
               type: "NEW_RESOURCE",
@@ -235,8 +198,7 @@ export async function POST(req: NextRequest) {
               message: `A new resource "${resource.title}" has been added to ${semLabel}.`,
               link: `/resource/${resource._id}`
             })
-          );
-          await Promise.all(promises);
+          ));
         }
       } catch (notifyError) {
         console.error("Failed to send resource notifications:", notifyError);
@@ -247,10 +209,7 @@ export async function POST(req: NextRequest) {
       { _id: resource._id, title: resource.title },
       { status: 201 }
     );
-  } catch (error: unknown) {
-    console.error("POST /api/resources error:", error);
-    const message = error instanceof Error ? error.message : "Failed to create resource";
-    const status = message.includes("Unauthorized") ? 401 : message.includes("Forbidden") ? 403 : 500;
-    return NextResponse.json({ error: message }, { status });
+  } catch (error) {
+    return handleApiError(error);
   }
 }

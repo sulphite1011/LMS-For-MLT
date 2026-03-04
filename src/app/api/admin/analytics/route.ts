@@ -3,6 +3,7 @@ import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
 import Comment from "@/models/Comment";
 import { requireAdmin } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-errors";
 import mongoose from "mongoose";
 
 export async function GET() {
@@ -49,7 +50,6 @@ export async function GET() {
 
     return NextResponse.json(stats);
   } catch (error) {
-    console.error("GET /api/admin/analytics error:", error);
-    return NextResponse.json({ error: "Failed to fetch analytics" }, { status: 500 });
+    return handleApiError(error);
   }
 }

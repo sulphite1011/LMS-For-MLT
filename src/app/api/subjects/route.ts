@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Subject from "@/models/Subject";
 import { requireAdmin } from "@/lib/auth";
+import { handleApiError, AppErrors } from "@/lib/api-errors";
 
 export async function GET() {
   try {
@@ -14,8 +15,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("GET /api/subjects error:", error);
-    return NextResponse.json([]);
+    return handleApiError(error);
   }
 }
 
@@ -25,10 +25,7 @@ export async function POST(req: NextRequest) {
     const { name, description } = await req.json();
 
     if (!name || !name.trim()) {
-      return NextResponse.json(
-        { error: "Subject name is required" },
-        { status: 400 }
-      );
+      throw AppErrors.BadRequest("Subject name is required");
     }
 
     await dbConnect();
@@ -37,10 +34,7 @@ export async function POST(req: NextRequest) {
       name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
     });
     if (existing) {
-      return NextResponse.json(
-        { error: "Subject already exists" },
-        { status: 409 }
-      );
+      throw AppErrors.Conflict("Subject already exists");
     }
 
     const subject = await Subject.create({
@@ -50,14 +44,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(subject, { status: 201 });
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create subject";
-    const status = message.includes("Unauthorized")
-      ? 401
-      : message.includes("Forbidden")
-        ? 403
-        : 500;
-    return NextResponse.json({ error: message }, { status });
+  } catch (error) {
+    return handleApiError(error);
   }
 }

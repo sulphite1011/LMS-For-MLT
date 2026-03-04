@@ -1,4 +1,6 @@
-import mongoose, { Schema, Model } from "mongoose";
+import mongoose, { Schema, Model, CallbackError } from "mongoose";
+import Resource from "./Resource";
+import Comment from "./Comment";
 
 export interface IUserDoc extends mongoose.Document {
   clerkId: string;
@@ -62,6 +64,68 @@ const UserSchema = new Schema<IUserDoc>({
   ],
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+});
+
+// Transfer resources to Super Admin and cleanup likes if a user is deleted
+UserSchema.pre("deleteOne", { document: true, query: false }, async function (next) {
+  try {
+    const userId = this._id;
+    const clerkId = this.clerkId;
+
+    // 1. Find the Super Admin (Hamad)
+    const superAdmin = await mongoose.model("User").findOne({ role: "superAdmin" });
+    if (superAdmin) {
+      await Resource.updateMany(
+        { createdBy: userId },
+        { createdBy: superAdmin._id }
+      );
+    }
+
+    // 2. Cleanup likes in comments and replies (using clerkId)
+    await Comment.updateMany(
+      { likes: clerkId },
+      { $pull: { likes: clerkId } }
+    );
+    await Comment.updateMany(
+      { "replies.likes": clerkId },
+      { $pull: { "replies.$[].likes": clerkId } }
+    );
+
+    next();
+  } catch (err: any) {
+    next(err as CallbackError);
+  }
+});
+
+// Also handle findOneAndDelete
+UserSchema.pre("findOneAndDelete", async function (next) {
+  try {
+    const userId = this.getQuery()._id;
+    if (userId) {
+      const user = await mongoose.model("User").findById(userId);
+      if (user) {
+        const clerkId = user.clerkId;
+        const superAdmin = await mongoose.model("User").findOne({ role: "superAdmin" });
+        if (superAdmin) {
+          await Resource.updateMany(
+            { createdBy: userId },
+            { createdBy: superAdmin._id }
+          );
+        }
+        await Comment.updateMany(
+          { likes: clerkId },
+          { $pull: { likes: clerkId } }
+        );
+        await Comment.updateMany(
+          { "replies.likes": clerkId },
+          { $pull: { "replies.$[].likes": clerkId } }
+        );
+      }
+    }
+    next();
+  } catch (err: any) {
+    next(err as CallbackError);
+  }
 });
 
 const User: Model<IUserDoc> =
