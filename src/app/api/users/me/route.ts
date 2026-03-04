@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest) {
     await dbConnect();
 
     const body = await req.json();
-    const { username, userHandle, bio, customAvatar } = body;
+    const { username, userHandle, bio, customAvatar, primarySemester, notificationPreferences } = body;
 
     const updateData: Record<string, unknown> = {};
 
@@ -125,6 +125,14 @@ export async function PATCH(req: NextRequest) {
       // Accepts base64 data URL or https:// URL — processed on client side
       updateData.customAvatar = customAvatar;
       updateData.userImage = customAvatar || DEFAULT_AVATAR; // Force sync the visual avatar so it doesn't flicker on refresh
+    }
+
+    if (primarySemester !== undefined) {
+      updateData.primarySemester = primarySemester;
+    }
+
+    if (notificationPreferences !== undefined) {
+      updateData.notificationPreferences = notificationPreferences;
     }
 
     const updated = await User.findOneAndUpdate(

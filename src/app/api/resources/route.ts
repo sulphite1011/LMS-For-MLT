@@ -201,26 +201,35 @@ export async function POST(req: NextRequest) {
     // Trigger Notifications for users in the same semester
     if (resource.semester) {
       try {
-        const Notification = (await import("@/models/Notification")).default;
+        const { sendNotification } = await import("@/lib/notifications");
+
+        // Find users who:
+        // 1. Have this semester in their subscribedSemesters
+        // 2. OR have receiveAll: true
+        // 3. AND are not the uploader
         const usersToNotify = await User.find({
-          semester: resource.semester,
-          clerkId: { $ne: user.clerkId }, // Don't notify the uploader
+          clerkId: { $ne: user.clerkId },
+          $or: [
+            { "notificationPreferences.receiveAll": true },
+            { "notificationPreferences.subscribedSemesters": resource.semester },
+            { primarySemester: resource.semester } // Fallback for basic semester match
+          ]
         }).select("clerkId");
 
         if (usersToNotify.length > 0) {
-          const notifications = usersToNotify.map((u) => ({
-            recipientId: u.clerkId,
-            type: "NEW_RESOURCE",
-            title: "New Resource Available",
-            message: `A new resource "${resource.title}" has been added to Semester ${resource.semester}.`,
-            link: `/resource/${resource._id}`,
-            isRead: false,
-          }));
-          await Notification.insertMany(notifications);
+          const promises = usersToNotify.map((u) =>
+            sendNotification({
+              recipientId: u.clerkId,
+              type: "NEW_RESOURCE",
+              title: "New Resource Available",
+              message: `A new resource "${resource.title}" has been added to Semester ${resource.semester}.`,
+              link: `/resource/${resource._id}`
+            })
+          );
+          await Promise.all(promises); // Wait for all dispatches
         }
       } catch (notifyError) {
         console.error("Failed to send resource notifications:", notifyError);
-        // Don't fail the resource upload if notification fails
       }
     }
 

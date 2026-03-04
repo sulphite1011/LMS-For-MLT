@@ -51,16 +51,22 @@ export async function PATCH(
       if (!content) {
         return NextResponse.json({ error: "Reply content is required" }, { status: 400 });
       }
-      comment.replies.push({
-        userId: user.clerkId,
-        userName: user.userHandle || user.username,
-        userImage: user.customAvatar || user.userImage || "/images/default-avatar.png",
-        content,
-        likes: [],
-        parentReplyId: parentReplyId || undefined,
-        mentionedUser: mentionedUser || undefined,
-        createdAt: new Date(),
-      });
+      // Trigger Notification for the parent comment author
+      try {
+        if (comment.userId !== user.clerkId) {
+          const { sendNotification } = await import("@/lib/notifications");
+          await sendNotification({
+            recipientId: comment.userId,
+            type: "COMMENT_REPLY",
+            title: "New Reply",
+            message: `${user.userHandle || user.username} replied to your comment.`,
+            link: `/resource/${comment.resourceId}`
+          });
+        }
+      } catch (notifyError) {
+        console.error("Failed to send reply notification:", notifyError);
+      }
+
       await comment.save();
     } else if (action === "delete_reply") {
       if (typeof replyIndex !== "number") {

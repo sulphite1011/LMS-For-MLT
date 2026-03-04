@@ -27,6 +27,12 @@ interface UserProfile {
   favoriteResources: string[];
   likedResources: string[];
   semester?: number;
+  primarySemester?: number;
+  notificationPreferences?: {
+    receiveAll: boolean;
+    receiveGeneral: boolean;
+    subscribedSemesters: number[];
+  };
   createdAt: string;
 }
 
@@ -56,6 +62,17 @@ const TABS = [
   { id: "activity", label: "Activity", icon: Activity },
 ];
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export default function DashboardPage() {
   const { user: clerkUser, isLoaded } = useUser();
   const { userImage: authImage } = useAuthState();
@@ -73,6 +90,11 @@ export default function DashboardPage() {
   const [editUsername, setEditUsername] = useState("");
   const [editBio, setEditBio] = useState("");
   const [editSemester, setEditSemester] = useState<number | "">("");
+  const [editPreferences, setEditPreferences] = useState({
+    receiveAll: false,
+    receiveGeneral: true,
+    subscribedSemesters: [] as number[],
+  });
   const [saving, setSaving] = useState(false);
 
   // Avatar upload
@@ -178,7 +200,8 @@ export default function DashboardPage() {
         body: JSON.stringify({
           username: editUsername,
           bio: editBio,
-          semester: editSemester || undefined,
+          primarySemester: editSemester || undefined,
+          notificationPreferences: editPreferences,
           ...(customAvatar ? { customAvatar } : {}),
         }),
       });
@@ -212,7 +235,12 @@ export default function DashboardPage() {
     console.log("[Dashboard] startEdit called. Profile:", profile, "ClerkUser:", clerkUser?.username);
     setEditUsername(profile?.username || clerkUser?.username || "");
     setEditBio(profile?.bio || "");
-    setEditSemester(profile?.semester || "");
+    setEditSemester(profile?.primarySemester || profile?.semester || "");
+    setEditPreferences(profile?.notificationPreferences || {
+      receiveAll: false,
+      receiveGeneral: true,
+      subscribedSemesters: [],
+    });
     setAvatarPreview(null);
     setAvatarFile(null);
     setEditMode(true);
@@ -298,32 +326,88 @@ export default function DashboardPage() {
                   </div>
                   <textarea value={editBio} onChange={e => setEditBio(e.target.value)} placeholder="Tell us about yourself..." rows={2} className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white/90 text-sm w-full placeholder:text-white/40 focus:outline-none focus:border-teal/60 resize-none" maxLength={300} />
 
-                  <div className="flex items-center gap-3">
-                    <span className="text-white/60 text-sm">Semester:</span>
-                    <select
-                      value={editSemester}
-                      onChange={e => setEditSemester(e.target.value === "" ? "" : Number(e.target.value))}
-                      className="bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-white text-sm focus:outline-none focus:border-teal/60"
-                    >
-                      <option value="" className="text-gray-900">Not Set</option>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => (
-                        <option key={s} value={s} className="text-gray-900">Semester {s}</option>
-                      ))}
-                    </select>
+                  <div className="flex flex-col gap-3 pt-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-white/60 text-sm">Primary Semester:</span>
+                      <select
+                        value={editSemester}
+                        onChange={e => setEditSemester(e.target.value === "" ? "" : Number(e.target.value))}
+                        className="bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-white text-sm focus:outline-none focus:border-teal/60"
+                      >
+                        <option value="" className="text-gray-900">Not Set</option>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => (
+                          <option key={s} value={s} className="text-gray-900">Semester {s}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/80 text-sm font-medium">Notification Preferences</span>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editPreferences.receiveAll}
+                            onChange={e => setEditPreferences(prev => ({ ...prev, receiveAll: e.target.checked }))}
+                            className="w-4 h-4 rounded border-white/20 bg-white/10 text-teal focus:ring-teal"
+                          />
+                          <span className="text-white/60 text-xs">Receive all semester alerts</span>
+                        </label>
+                      </div>
+
+                      {!editPreferences.receiveAll && (
+                        <div className="space-y-2">
+                          <p className="text-white/50 text-[11px] mb-1">Select semesters to subscribe for alerts:</p>
+                          <div className="grid grid-cols-5 gap-2">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => {
+                                  const sub = editPreferences.subscribedSemesters;
+                                  setEditPreferences(prev => ({
+                                    ...prev,
+                                    subscribedSemesters: sub.includes(s) ? sub.filter(i => i !== s) : [...sub, s]
+                                  }));
+                                }}
+                                className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${editPreferences.subscribedSemesters.includes(s)
+                                  ? "bg-teal text-white border-teal shadow-lg shadow-teal/20"
+                                  : "bg-white/5 text-white/40 border-white/10 hover:border-white/30"
+                                  }`}
+                              >
+                                Sem {s}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-white">{profile?.username || clerkUser.username}</h1>
                   <p className="text-white/60 text-sm mt-0.5">{clerkUser.primaryEmailAddress?.emailAddress}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {profile?.semester ? (
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                    {profile?.primarySemester || profile?.semester ? (
                       <span className="bg-teal/20 text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal/30">
-                        Semester {profile.semester}
+                        Semester {profile.primarySemester || profile.semester}
                       </span>
                     ) : (
                       <span className="text-white/30 text-[10px] italic">Semester not set</span>
                     )}
+
+                    {profile?.notificationPreferences?.receiveAll ? (
+                      <span className="bg-blue-500/20 text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-500/30">
+                        Subscribed to All
+                      </span>
+                    ) : profile?.notificationPreferences?.subscribedSemesters?.length ? (
+                      profile.notificationPreferences.subscribedSemesters.map(s => (
+                        <span key={s} className="bg-white/10 text-white/50 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10">
+                          S{s}
+                        </span>
+                      ))
+                    ) : null}
                   </div>
                   {profile?.bio && <p className="text-white/80 text-sm mt-2 max-w-md">{profile.bio}</p>}
                   <p className="text-white/40 text-xs mt-2 flex items-center gap-1.5 justify-center sm:justify-start">
@@ -422,6 +506,66 @@ export default function DashboardPage() {
                     <dd className="text-sm font-medium text-slate-900">{profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : ""}</dd>
                   </div>
                 </dl>
+
+                {/* Web Push Section */}
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                  <h4 className="text-sm font-semibold text-slate-800 mb-2">Browser Notifications</h4>
+                  <p className="text-xs text-slate-500 mb-4">Get notified even when you don't have the website open.</p>
+
+                  <button
+                    onClick={async () => {
+                      try {
+                        const permission = await Notification.requestPermission();
+                        if (permission !== "granted") {
+                          toast.error("Permission denied for notifications");
+                          return;
+                        }
+
+                        // 2. Wait for Service Worker to be READY
+                        const register = await navigator.serviceWorker.register("/sw.js", {
+                          scope: "/"
+                        });
+
+                        // Wait until the service worker is active
+                        await navigator.serviceWorker.ready;
+
+                        // 3. Decode Public Key
+                        const publicKey = "BJ1rYwu55-dp_8ArvzWfflqfXx3KROlLRxkxUNpfH4jfRo-M5Je5MGcNEcXIXGQqV2HQrOVoIG_TDAdu60TmW-g";
+                        const convertedVapidKey = urlBase64ToUint8Array(publicKey);
+
+                        // 4. Unsubscribe old if any (optional but clean)
+                        const oldSub = await register.pushManager.getSubscription();
+                        if (oldSub) await oldSub.unsubscribe();
+
+                        // 5. Subscribe
+                        const subscription = await register.pushManager.subscribe({
+                          userVisibleOnly: true,
+                          applicationServerKey: convertedVapidKey
+                        });
+
+                        // Save to backend
+                        const res = await fetch("/api/notifications/subscribe", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(subscription)
+                        });
+
+                        if (res.ok) {
+                          toast.success("Push notifications enabled!");
+                        } else {
+                          toast.error("Failed to sync with server");
+                        }
+                      } catch (err) {
+                        console.error("Push subscription error:", err);
+                        toast.error("Enable push notifications failed");
+                      }
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 bg-teal text-white rounded-xl hover:bg-teal-dark transition-all font-semibold text-sm shadow-sm hover:shadow-md"
+                  >
+                    <Activity className="w-4 h-4" />
+                    Enable Desktop Notifications
+                  </button>
+                </div>
 
                 {/* Sign Out Section */}
                 <div className="mt-8 pt-6 border-t border-slate-100">

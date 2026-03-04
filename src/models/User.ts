@@ -14,7 +14,19 @@ export interface IUserDoc extends mongoose.Document {
   isPending?: boolean;
   favoriteResources: mongoose.Types.ObjectId[];
   likedResources: mongoose.Types.ObjectId[];
-  semester?: number; // 1-10
+  primarySemester?: number; // 1-10
+  notificationPreferences: {
+    receiveAll: boolean;
+    receiveGeneral: boolean;
+    subscribedSemesters: number[];
+  };
+  pushSubscriptions: Array<{
+    endpoint: string;
+    keys: {
+      p256dh: string;
+      auth: string;
+    };
+  }>;
   createdAt: Date;
   createdBy?: mongoose.Types.ObjectId;
 }
@@ -33,7 +45,21 @@ const UserSchema = new Schema<IUserDoc>({
   isPending: { type: Boolean, default: false },
   favoriteResources: [{ type: Schema.Types.ObjectId, ref: "Resource" }],
   likedResources: [{ type: Schema.Types.ObjectId, ref: "Resource" }],
-  semester: { type: Number, min: 1, max: 10 },
+  primarySemester: { type: Number, min: 1, max: 10 },
+  notificationPreferences: {
+    receiveAll: { type: Boolean, default: false },
+    receiveGeneral: { type: Boolean, default: true },
+    subscribedSemesters: [{ type: Number }],
+  },
+  pushSubscriptions: [
+    {
+      endpoint: { type: String, required: true },
+      keys: {
+        p256dh: { type: String, required: true },
+        auth: { type: String, required: true },
+      },
+    },
+  ],
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: "User" },
 });
