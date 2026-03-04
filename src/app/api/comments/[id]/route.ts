@@ -51,6 +51,18 @@ export async function PATCH(
       if (!content) {
         return NextResponse.json({ error: "Reply content is required" }, { status: 400 });
       }
+      // Add the new reply to the comment
+      comment.replies.push({
+        userId: user.clerkId,
+        userName: user.userHandle || user.username || "User",
+        userImage: user.userImage,
+        content,
+        parentReplyId,
+        mentionedUser,
+        likes: [],
+        createdAt: new Date()
+      });
+
       // Trigger Notification for the parent comment author
       try {
         if (comment.userId !== user.clerkId) {
