@@ -145,10 +145,18 @@ export function NotificationBell() {
               onClick={() => setIsOpen(false)}
             />
             <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              initial={{
+                opacity: 0,
+                y: typeof window !== 'undefined' && window.innerWidth < 768 ? 100 : 10,
+                scale: typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 0.95
+              }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute right-0 mt-2 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              exit={{
+                opacity: 0,
+                y: typeof window !== 'undefined' && window.innerWidth < 768 ? 100 : 10,
+                scale: typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 0.95
+              }}
+              className="fixed inset-x-0 bottom-0 md:absolute md:inset-auto md:right-0 md:top-full mt-2 w-full md:w-96 bg-white rounded-t-3xl md:rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
             >
               <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                 <h3 className="font-bold text-gray-900">Notifications</h3>
@@ -171,14 +179,14 @@ export function NotificationBell() {
                   )}
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 p-1"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-5 h-5 md:w-4 md:h-4" />
                   </button>
                 </div>
               </div>
 
-              <div className="max-h-[400px] overflow-y-auto">
+              <div className="max-h-[70vh] md:max-h-[400px] overflow-y-auto pb-6 md:pb-0">
                 {notifications.length === 0 ? (
                   <div className="p-10 text-center">
                     <div className="w-12 h-12 bg-teal/5 rounded-full flex items-center justify-center mx-auto mb-3">

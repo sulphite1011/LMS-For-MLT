@@ -189,13 +189,35 @@ export default function NewResourcePage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Semester (Optional)</label>
-              <select value={semester} onChange={e => setSemester(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm bg-white">
-                <option value="">Select semester</option>
-                {[...Array(10)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>Semester {i + 1}</option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Semester *</label>
+              <div className="flex gap-2">
+                <select
+                  value={semester === "" || !isNaN(Number(semester)) ? semester : "custom"}
+                  onChange={e => {
+                    if (e.target.value === "custom") setSemester("General");
+                    else setSemester(e.target.value);
+                  }}
+                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm bg-white"
+                  required
+                >
+                  <option value="">Select semester</option>
+                  {[...Array(10)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>Semester {i + 1}</option>
+                  ))}
+                  <option value="custom">Other / Custom</option>
+                </select>
+                {(semester !== "" && isNaN(Number(semester)) || semester === "custom") && (
+                  <input
+                    type="text"
+                    value={semester === "custom" ? "" : semester}
+                    onChange={e => setSemester(e.target.value)}
+                    placeholder="e.g. General"
+                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm"
+                    required
+                  />
+                )}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1 italic">Selecting "General" notifies everyone with general alerts enabled.</p>
             </div>
           </div>
           <div>

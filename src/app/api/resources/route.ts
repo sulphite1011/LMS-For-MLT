@@ -198,35 +198,45 @@ export async function POST(req: NextRequest) {
 
     const resource = await Resource.create(resourceData);
 
-    // Trigger Notifications for users in the same semester
+    // Trigger Notifications
     if (resource.semester) {
       try {
         const { sendNotification } = await import("@/lib/notifications");
+        const sem = resource.semester;
+        let query: any = { clerkId: { $ne: user.clerkId } };
 
-        // Find users who:
-        // 1. Have this semester in their subscribedSemesters
-        // 2. OR have receiveAll: true
-        // 3. AND are not the uploader
-        const usersToNotify = await User.find({
-          clerkId: { $ne: user.clerkId },
-          $or: [
+        if (typeof sem === "number" || (!isNaN(Number(sem)) && sem !== "")) {
+          const semNum = Number(sem);
+          query.$or = [
             { "notificationPreferences.receiveAll": true },
-            { "notificationPreferences.subscribedSemesters": resource.semester },
-            { primarySemester: resource.semester } // Fallback for basic semester match
-          ]
-        }).select("clerkId");
+            { "notificationPreferences.subscribedSemesters": semNum },
+            { primarySemester: semNum }
+          ];
+        } else if (String(sem).toLowerCase() === "general") {
+          query.$or = [
+            { "notificationPreferences.receiveAll": true },
+            { "notificationPreferences.receiveGeneral": true }
+          ];
+        } else {
+          // Custom tag (e.g. "Club", "Announcement")
+          // Currently only notify 'receiveAll' users for custom tags
+          query["notificationPreferences.receiveAll"] = true;
+        }
+
+        const usersToNotify = await User.find(query).select("clerkId");
 
         if (usersToNotify.length > 0) {
+          const semLabel = typeof sem === "number" ? `Semester ${sem}` : sem;
           const promises = usersToNotify.map((u) =>
             sendNotification({
               recipientId: u.clerkId,
               type: "NEW_RESOURCE",
               title: "New Resource Available",
-              message: `A new resource "${resource.title}" has been added to Semester ${resource.semester}.`,
+              message: `A new resource "${resource.title}" has been added to ${semLabel}.`,
               link: `/resource/${resource._id}`
             })
           );
-          await Promise.all(promises); // Wait for all dispatches
+          await Promise.all(promises);
         }
       } catch (notifyError) {
         console.error("Failed to send resource notifications:", notifyError);

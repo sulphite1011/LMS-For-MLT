@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Plus,
   ArrowRight,
+  Bell,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuthState } from "@/contexts/AuthContext";
@@ -161,6 +162,20 @@ export default function AdminDashboard() {
               <h3 className="font-semibold text-lg">Add Resource</h3>
               <p className="text-white/80 text-sm mt-1">
                 Upload new study material
+              </p>
+              <ArrowRight className="w-5 h-5 mt-4" />
+            </motion.div>
+          </Link>
+
+          <Link href="/admin/broadcast">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-indigo-600 text-white rounded-2xl p-6 shadow-md cursor-pointer"
+            >
+              <Bell className="w-8 h-8 mb-3" />
+              <h3 className="font-semibold text-lg">Broadcast Alert</h3>
+              <p className="text-white/80 text-sm mt-1">
+                Send manual push notifications
               </p>
               <ArrowRight className="w-5 h-5 mt-4" />
             </motion.div>
