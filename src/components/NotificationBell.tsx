@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Bell, X, BookOpen, MessageCircle, Trash2 } from "lucide-react";
+import { Bell, X, BookOpen, MessageCircle, Trash2, Megaphone } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -9,7 +9,7 @@ import { subscribeUserToPush } from "@/lib/push-client";
 
 interface INotification {
   _id: string;
-  type: "NEW_RESOURCE" | "COMMENT_REPLY";
+  type: "NEW_RESOURCE" | "COMMENT_REPLY" | "SYSTEM_BROADCAST";
   title: string;
   message: string;
   link: string;
@@ -44,10 +44,17 @@ export function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications();
-    // Smart Polling: check every 60 seconds
-    const interval = setInterval(fetchNotifications, 60000);
+    // Smart Polling: check every 45 seconds (slightly faster for better perceived performance)
+    const interval = setInterval(fetchNotifications, 45000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  // Fetch immediately when the drawer is opened to ensure freshness
+  useEffect(() => {
+    if (isOpen) {
+      fetchNotifications();
+    }
+  }, [isOpen, fetchNotifications]);
 
   const markAllAsRead = async () => {
     try {
@@ -229,11 +236,15 @@ export function NotificationBell() {
                             <div
                               className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${n.type === "NEW_RESOURCE"
                                 ? "bg-blue-100 text-blue-600"
-                                : "bg-purple-100 text-purple-600"
+                                : n.type === "SYSTEM_BROADCAST"
+                                  ? "bg-amber-100 text-amber-600"
+                                  : "bg-purple-100 text-purple-600"
                                 }`}
                             >
                               {n.type === "NEW_RESOURCE" ? (
                                 <BookOpen className="w-5 h-5" />
+                              ) : n.type === "SYSTEM_BROADCAST" ? (
+                                <Megaphone className="w-5 h-5" />
                               ) : (
                                 <MessageCircle className="w-5 h-5" />
                               )}

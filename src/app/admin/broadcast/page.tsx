@@ -27,6 +27,7 @@ export default function BroadcastPage() {
       } else {
         next.push(t);
       }
+      // If nothing left, default to "all" to ensure someone gets it
       if (next.length === 0) next = ["all"];
       setTargets(next);
     }
@@ -86,14 +87,14 @@ export default function BroadcastPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Form Section */}
         <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="lg:col-span-2 space-y-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-2 space-y-6 order-1 lg:order-1"
         >
-          <form onSubmit={handleSend} className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+          <form onSubmit={handleSend} className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-8 space-y-6 shadow-xl">
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-2">Subject / Title</label>
@@ -102,7 +103,7 @@ export default function BroadcastPage() {
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="e.g. Upcoming Exam Schedule"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal transition-all"
                   required
                 />
               </div>
@@ -114,7 +115,7 @@ export default function BroadcastPage() {
                   onChange={e => setMessage(e.target.value)}
                   placeholder="Compose your message here..."
                   rows={5}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal transition-all resize-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal transition-all resize-none"
                   required
                 />
               </div>
@@ -140,17 +141,17 @@ export default function BroadcastPage() {
 
         {/* Sidebar Controls */}
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="space-y-6"
+          className="space-y-6 order-2 lg:order-2"
         >
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-xl">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-xl lg:sticky lg:top-24">
             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <Users className="w-5 h-5 text-teal" /> Target Audience
             </h3>
 
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
               <button
                 type="button"
                 onClick={() => toggleTarget("all")}
@@ -182,7 +183,7 @@ export default function BroadcastPage() {
 
             <div className="pt-4 border-t border-slate-100">
               <p className="text-[10px] uppercase font-bold text-slate-400 mb-3 tracking-widest">Specific Semesters</p>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-5 sm:grid-cols-5 gap-2">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => (
                   <button
                     key={s}
@@ -202,7 +203,7 @@ export default function BroadcastPage() {
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex gap-3">
               <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
               <p className="text-[10px] text-amber-500/80 leading-relaxed font-medium">
-                Caution: Broadcasts are sent via Web Push immediately. Ensure message accuracy before dispatching.
+                Caution: Broadcasts are sent via Web Push immediately. Ensure accuracy before dispatching.
               </p>
             </div>
           </div>

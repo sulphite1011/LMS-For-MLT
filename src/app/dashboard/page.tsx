@@ -352,7 +352,20 @@ export default function DashboardPage() {
                             onChange={e => setEditPreferences(prev => ({ ...prev, receiveAll: e.target.checked }))}
                             className="w-4 h-4 rounded border-white/20 bg-white/10 text-teal focus:ring-teal"
                           />
-                          <span className="text-white/60 text-xs">Receive all semester alerts</span>
+                          <span className="text-white/60 text-xs text-left">Receive all semester alerts (ignore filters)</span>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/80 text-[11px] font-medium leading-tight">General Announcements</span>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editPreferences.receiveGeneral}
+                            onChange={e => setEditPreferences(prev => ({ ...prev, receiveGeneral: e.target.checked }))}
+                            className="w-4 h-4 rounded border-white/20 bg-white/10 text-teal focus:ring-teal"
+                          />
+                          <span className="text-white/60 text-xs">Stay updated on system news</span>
                         </label>
                       </div>
 

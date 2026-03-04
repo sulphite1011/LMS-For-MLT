@@ -23,7 +23,7 @@ function ensureVapidConfigured() {
 
 interface SendNotificationOptions {
   recipientId: string;
-  type: "NEW_RESOURCE" | "COMMENT_REPLY";
+  type: "NEW_RESOURCE" | "COMMENT_REPLY" | "SYSTEM_BROADCAST";
   title: string;
   message: string;
   link: string;
@@ -50,33 +50,39 @@ export async function sendNotification(options: SendNotificationOptions) {
     // 2. Fetch user's push subscriptions
     const user = await User.findOne({ clerkId: recipientId }).select("pushSubscriptions");
     if (!user || !user.pushSubscriptions || user.pushSubscriptions.length === 0) {
+      console.log(`[Notification] No push subscriptions for user ${recipientId}`);
       return;
     }
+
+    console.log(`[Notification] Sending to ${user.pushSubscriptions.length} endpoints for user ${recipientId}`);
 
     // 3. Dispatch Web Push notifications
     const payload = JSON.stringify({ title, message, link });
 
-    const pushPromises = user.pushSubscriptions.map((sub) => {
+    const pushPromises = user.pushSubscriptions.map((sub, index) => {
       return webPush.sendNotification(
         {
           endpoint: sub.endpoint,
           keys: sub.keys,
         },
         payload
-      ).catch((err) => {
+      ).then(() => {
+        console.log(`[Notification] Success for endpoint ${index + 1} of user ${recipientId}`);
+      }).catch((err) => {
         if (err.statusCode === 410 || err.statusCode === 404) {
-          // Subscription expired or no longer valid - remove it
+          console.log(`[Notification] Subscription expired for user ${recipientId}, removing...`);
           return User.updateOne(
             { clerkId: recipientId },
             { $pull: { pushSubscriptions: { endpoint: sub.endpoint } } }
           );
         }
-        console.error("Web Push delivery failed for endpoint:", sub.endpoint, err);
+        console.error(`[Notification] Push failed for endpoint ${index + 1} of user ${recipientId}:`, err.message);
       });
     });
 
     await Promise.all(pushPromises);
+    console.log(`[Notification] Dispatch complete for user ${recipientId}`);
   } catch (error) {
-    console.error("Failed to send notification:", error);
+    console.error("[Notification] Error:", error);
   }
 }

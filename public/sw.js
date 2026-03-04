@@ -1,26 +1,50 @@
-self.addEventListener("push", function (event) {
-  if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.message,
-      icon: "/images/logo.png",
-      badge: "/images/badge.png",
-      tag: "lms-notification", // Groups notifications
-      renotify: true, // Vibrates for each new message in same tag
-      data: {
-        url: data.link || "/dashboard",
-      },
-    };
+self.addEventListener("install", (event) => {
+  console.log("[Service Worker] Installing...");
+  self.skipWaiting();
+});
 
-    event.waitUntil(self.registration.showNotification(data.title, options));
+self.addEventListener("activate", (event) => {
+  console.log("[Service Worker] Activated and ready.");
+  return self.clients.claim();
+});
+
+self.addEventListener("push", function (event) {
+  console.log("[Service Worker] Push Received.");
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      console.log("[Service Worker] Data:", data);
+
+      const options = {
+        body: data.message,
+        icon: "/images/default-avatar.png",
+        badge: "/images/default-avatar.png",
+        tag: "lms-notification",
+        renotify: true,
+        data: {
+          url: data.link || "/dashboard",
+        },
+        vibrate: [100, 50, 100],
+        actions: [
+          { action: "open", title: "View" }
+        ]
+      };
+
+      event.waitUntil(self.registration.showNotification(data.title, options));
+    } catch (err) {
+      console.error("[Service Worker] Error parsing push data:", err);
+    }
   }
 });
 
 self.addEventListener("notificationclick", function (event) {
+  console.log("[Service Worker] Notification Clicked.");
   event.notification.close();
-  const urlToOpen = new URL(event.notification.data.url, self.location.origin).href;
 
-  const promiseChain = clients.matchAll({
+  const urlToOpen = new URL(event.notification.data.url, self.location.origin).href;
+  console.log("[Service Worker] Opening URL:", urlToOpen);
+
+  const promiseChain = self.clients.matchAll({
     type: "window",
     includeUncontrolled: true
   }).then((windowClients) => {
@@ -37,7 +61,7 @@ self.addEventListener("notificationclick", function (event) {
     if (matchingClient) {
       return matchingClient.focus();
     } else {
-      return clients.openWindow(urlToOpen);
+      return self.clients.openWindow(urlToOpen);
     }
   });
 

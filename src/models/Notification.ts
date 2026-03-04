@@ -2,12 +2,11 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface INotification extends Document {
   recipientId: string; // Clerk ID
-  type: "NEW_RESOURCE" | "COMMENT_REPLY";
+  type: "NEW_RESOURCE" | "COMMENT_REPLY" | "SYSTEM_BROADCAST";
   title: string;
   message: string;
   link: string;
   isRead: boolean;
-  isArchived: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,14 +16,13 @@ const NotificationSchema = new Schema<INotification>(
     recipientId: { type: String, required: true, index: true },
     type: {
       type: String,
-      enum: ["NEW_RESOURCE", "COMMENT_REPLY"],
+      enum: ["NEW_RESOURCE", "COMMENT_REPLY", "SYSTEM_BROADCAST"],
       required: true,
     },
     title: { type: String, required: true },
     message: { type: String, required: true },
     link: { type: String, required: true },
     isRead: { type: Boolean, default: false },
-    isArchived: { type: Boolean, default: false },
   },
   {
     timestamps: true,
@@ -32,9 +30,9 @@ const NotificationSchema = new Schema<INotification>(
 );
 
 // Index for fetching unread count quickly
-NotificationSchema.index({ recipientId: 1, isRead: 1, isArchived: 1 });
+NotificationSchema.index({ recipientId: 1, isRead: 1 });
 // Index for fetching latest notifications
-NotificationSchema.index({ recipientId: 1, isArchived: 1, createdAt: -1 });
+NotificationSchema.index({ recipientId: 1, createdAt: -1 });
 
 const Notification: Model<INotification> =
   mongoose.models.Notification ||

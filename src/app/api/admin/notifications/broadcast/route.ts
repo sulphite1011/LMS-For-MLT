@@ -23,13 +23,18 @@ export async function POST(req: NextRequest) {
       const semesters = targets.filter(t => typeof t === "number" || !isNaN(Number(t)));
       if (semesters.length > 0) {
         const semNums = semesters.map(Number);
+        // User must either have it as primary semester OR have it in subscribed semesters
         targetConditions.push({ primarySemester: { $in: semNums } });
         targetConditions.push({ "notificationPreferences.subscribedSemesters": { $in: semNums } });
       }
 
       if (targets.includes("general")) {
+        // Only those who explicitly have receiveGeneral enabled
         targetConditions.push({ "notificationPreferences.receiveGeneral": true });
       }
+
+      // Always include users who have "Receive All" enabled regardless of filters
+      targetConditions.push({ "notificationPreferences.receiveAll": true });
 
       if (targetConditions.length > 0) {
         query.$or = targetConditions;
@@ -45,7 +50,7 @@ export async function POST(req: NextRequest) {
     const promises = usersToNotify.map(u =>
       sendNotification({
         recipientId: u.clerkId,
-        type: "COMMENT_REPLY", // Reusing type or we could add 'BROADCAST'
+        type: "SYSTEM_BROADCAST",
         title,
         message,
         link: link || "/dashboard"
