@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useAuthState } from "@/contexts/AuthContext";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { BookOpen, LayoutDashboard, Menu, X, User as UserIcon } from "lucide-react";
+import { BookOpen, LayoutDashboard, Menu, X, User as UserIcon, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { NotificationBell } from "./NotificationBell";
 
@@ -54,6 +54,15 @@ export function Navbar() {
                     >
                       <LayoutDashboard className="w-4 h-4" />
                       Admin
+                    </Link>
+                  )}
+                  {authLoaded && userRole === "user" && (
+                    <Link
+                      href="/admin/claim"
+                      className="flex items-center gap-2 text-sm text-teal hover:bg-teal/10 px-3 py-2 rounded-full border border-teal/20 transition-colors"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      Verify Admin
                     </Link>
                   )}
                 </div>
@@ -122,6 +131,11 @@ export function Navbar() {
             {(userRole === "superAdmin" || userRole === "admin") && (
               <Link href="/admin" className="block text-sm text-teal py-2" onClick={() => setMobileMenuOpen(false)}>
                 Admin Dashboard
+              </Link>
+            )}
+            {userRole === "user" && (
+              <Link href="/admin/claim" className="block text-sm text-teal py-2 font-medium" onClick={() => setMobileMenuOpen(false)}>
+                Claim Admin Status
               </Link>
             )}
           </SignedIn>
