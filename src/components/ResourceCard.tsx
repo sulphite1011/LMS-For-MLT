@@ -192,7 +192,7 @@ export function ResourceCard({
             <div className="mt-3 flex items-center justify-between text-[11px] text-gray-400">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1">
-                  <Heart className="w-3 h-3" /> {likesCount}
+                  <Heart className="w-3 h-3" /> {Math.max(0, likesCount)}
                 </span>
                 <span className="flex items-center gap-1">
                   <BookOpen className="w-3 h-3 text-gray-300" /> {viewsCount.toLocaleString()} views
