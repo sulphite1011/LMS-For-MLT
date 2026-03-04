@@ -2,13 +2,23 @@ import webPush from "web-push";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
 
-// Configure Web Push with VAPID keys from environment
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webPush.setVapidDetails(
-    process.env.VAPID_SUBJECT || "mailto:admin@hamads-lms.com",
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
+// Lazy initialization for Web Push
+let isVapidSet = false;
+function ensureVapidConfigured() {
+  if (isVapidSet) return;
+
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    try {
+      webPush.setVapidDetails(
+        process.env.VAPID_SUBJECT || "mailto:admin@hamads-lms.com",
+        process.env.VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+      );
+      isVapidSet = true;
+    } catch (error) {
+      console.error("Failed to set VAPID details:", error);
+    }
+  }
 }
 
 interface SendNotificationOptions {
@@ -23,6 +33,7 @@ interface SendNotificationOptions {
  * Sends a notification to a user (In-App + Web Push)
  */
 export async function sendNotification(options: SendNotificationOptions) {
+  ensureVapidConfigured();
   try {
     const { recipientId, type, title, message, link } = options;
 

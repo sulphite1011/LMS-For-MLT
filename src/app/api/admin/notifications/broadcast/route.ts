@@ -60,8 +60,9 @@ export async function POST(req: NextRequest) {
       message: `Broadcast sent to ${usersToNotify.length} users.`
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to send broadcast";
     console.error("Broadcast error:", error);
-    return NextResponse.json({ error: error.message || "Failed to send broadcast" }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

@@ -32,8 +32,8 @@ export function NotificationOnboarding() {
             setTimeout(() => setShow(true), 2000);
           }
         }
-      } catch (err) {
-        console.error("Onboarding check failed:", err);
+      } catch {
+        // Silently fail onboarding check in background
       }
     };
 
@@ -143,7 +143,7 @@ export function NotificationOnboarding() {
                   <Bell className="w-8 h-8 text-teal" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Stay Informed</h2>
-                <p className="text-gray-500 mb-8 px-4">Get instant notifications for new resources and replies even when you're busy in the lab.</p>
+                <p className="text-gray-500 mb-8 px-4">Get instant notifications for new resources and replies even when you&apos;re busy in the lab.</p>
 
                 <div className="space-y-4">
                   <button

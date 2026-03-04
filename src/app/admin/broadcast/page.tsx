@@ -60,7 +60,7 @@ export default function BroadcastPage() {
       } else {
         toast.error(data.error || "Failed to send");
       }
-    } catch (err) {
+    } catch {
       toast.error("Network error");
     } finally {
       setSending(false);
@@ -165,8 +165,8 @@ export default function BroadcastPage() {
                 type="button"
                 onClick={() => toggleTarget("all")}
                 className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${targets.includes("all")
-                    ? "bg-teal/10 border-teal text-teal"
-                    : "bg-white/5 border-white/10 text-white/60 hover:border-white/20"
+                  ? "bg-teal/10 border-teal text-teal"
+                  : "bg-white/5 border-white/10 text-white/60 hover:border-white/20"
                   }`}
               >
                 <div className="flex items-center gap-3 font-semibold">
@@ -179,8 +179,8 @@ export default function BroadcastPage() {
                 type="button"
                 onClick={() => toggleTarget("general")}
                 className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${targets.includes("general")
-                    ? "bg-teal/10 border-teal text-teal"
-                    : "bg-white/5 border-white/10 text-white/60 hover:border-white/20"
+                  ? "bg-teal/10 border-teal text-teal"
+                  : "bg-white/5 border-white/10 text-white/60 hover:border-white/20"
                   }`}
               >
                 <div className="flex items-center gap-3 font-semibold">
@@ -199,8 +199,8 @@ export default function BroadcastPage() {
                     type="button"
                     onClick={() => toggleTarget(String(s))}
                     className={`h-10 rounded-xl border text-xs font-bold transition-all ${targets.includes(String(s))
-                        ? "bg-teal text-white border-teal shadow-lg shadow-teal/20"
-                        : "bg-white/5 border-white/10 text-white/40 hover:border-white/20"
+                      ? "bg-teal text-white border-teal shadow-lg shadow-teal/20"
+                      : "bg-white/5 border-white/10 text-white/40 hover:border-white/20"
                       }`}
                   >
                     S{s}
