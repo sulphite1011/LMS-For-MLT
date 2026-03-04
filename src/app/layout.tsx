@@ -4,6 +4,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
+import { NotificationOnboarding } from "@/components/NotificationOnboarding";
+import { SignedIn } from "@clerk/nextjs";
 import "./globals.css";
 
 const inter = Inter({
@@ -105,6 +107,9 @@ export default function RootLayout({
         <body className={`${inter.variable} font-sans antialiased`}>
           <AuthProvider>
             {children}
+            <SignedIn>
+              <NotificationOnboarding />
+            </SignedIn>
             <ToastProvider />
             <ScrollToTop />
           </AuthProvider>

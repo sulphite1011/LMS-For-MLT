@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Bell, X, BookOpen, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import toast from "react-hot-toast";
 
 interface INotification {
   _id: string;
@@ -19,6 +20,13 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<INotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [permission, setPermission] = useState<NotificationPermission>("default");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setPermission(Notification.permission);
+    }
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -68,13 +76,60 @@ export function NotificationBell() {
     }
   };
 
+  const subscribeToPush = async () => {
+    try {
+      const result = await Notification.requestPermission();
+      setPermission(result);
+      if (result !== "granted") {
+        toast.error("Permission denied for notifications");
+        return;
+      }
+
+      const register = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      await navigator.serviceWorker.ready;
+
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!publicKey) throw new Error("VAPID public key not found");
+
+      const padding = "=".repeat((4 - (publicKey.length % 4)) % 4);
+      const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+
+      const subscription = await register.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: outputArray
+      });
+
+      const res = await fetch("/api/notifications/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription)
+      });
+
+      if (res.ok) {
+        toast.success("Notifications enabled!");
+      }
+    } catch (error) {
+      console.error("Subscription failed:", error);
+      toast.error("Failed to enable notifications");
+    }
+  };
+
   return (
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-400 hover:text-teal transition-colors"
+        className={`relative p-2 transition-colors ${permission === "granted" ? "text-gray-400 hover:text-teal" : "text-gray-300 hover:text-teal"
+          }`}
       >
         <Bell className="w-6 h-6" />
+        {permission !== "granted" && (
+          <span className="absolute top-2 right-2 flex h-2 w-2 items-center justify-center rounded-full bg-amber-500 ring-1 ring-white" title="Notifications disabled" />
+        )}
         {unreadCount > 0 && (
           <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
             {unreadCount}
@@ -98,6 +153,14 @@ export function NotificationBell() {
               <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                 <h3 className="font-bold text-gray-900">Notifications</h3>
                 <div className="flex items-center gap-3">
+                  {permission !== "granted" && (
+                    <button
+                      onClick={subscribeToPush}
+                      className="text-[10px] bg-teal/10 text-teal px-2 py-1 rounded-full font-bold hover:bg-teal/20 transition-colors"
+                    >
+                      Enable Alerts
+                    </button>
+                  )}
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
@@ -118,10 +181,25 @@ export function NotificationBell() {
               <div className="max-h-[400px] overflow-y-auto">
                 {notifications.length === 0 ? (
                   <div className="p-10 text-center">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Bell className="w-6 h-6 text-gray-400" />
+                    <div className="w-12 h-12 bg-teal/5 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Bell className="w-6 h-6 text-teal" />
                     </div>
-                    <p className="text-sm text-gray-500">No notifications yet</p>
+                    <p className="text-sm font-semibold text-gray-800 mb-1">
+                      {permission === "granted" ? "No notifications yet" : "Stay Informed"}
+                    </p>
+                    <p className="text-xs text-gray-500 mb-4 px-4">
+                      {permission === "granted"
+                        ? "We'll notify you when new resources match your profile."
+                        : "Enable desktop alerts to get instant notifications about resources and replies."}
+                    </p>
+                    {permission !== "granted" && (
+                      <button
+                        onClick={subscribeToPush}
+                        className="bg-teal text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-teal-dark transition-all shadow-sm"
+                      >
+                        Enable Notifications
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-50">
@@ -139,8 +217,8 @@ export function NotificationBell() {
                         <div className="flex gap-3">
                           <div
                             className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${n.type === "NEW_RESOURCE"
-                                ? "bg-blue-100 text-blue-600"
-                                : "bg-purple-100 text-purple-600"
+                              ? "bg-blue-100 text-blue-600"
+                              : "bg-purple-100 text-purple-600"
                               }`}
                           >
                             {n.type === "NEW_RESOURCE" ? (
