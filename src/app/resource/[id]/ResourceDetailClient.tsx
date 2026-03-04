@@ -19,6 +19,7 @@ import {
   Heart,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import { ResourceCard } from "@/components/ResourceCard";
 import { DetailSkeleton } from "@/components/ui/Skeleton";
 import { getYoutubeEmbedUrl } from "@/lib/utils";
@@ -529,6 +530,7 @@ export default function ResourceDetailClient({ id }: { id: string }) {
           </motion.div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

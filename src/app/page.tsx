@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 // improving LCP and enabling crawlers to see actual resources.
 import { BookOpen, Mail, ArrowRight, Sparkles } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import HomeClient from "./HomeClient";
 import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
@@ -148,31 +149,7 @@ export default async function HomePage() {
         currentUser={null}
       />
 
-      {/* Footer */}
-      <footer className="bg-navy text-gray-400 py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-teal rounded-lg flex items-center justify-center">
-              <BookOpen className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-white">
-              Hamad&apos;s <span className="text-teal">LMS</span>
-            </span>
-          </div>
-          <p className="text-sm mb-4">
-            Medical Laboratory Technology Study Resources
-          </p>
-          <p className="text-xs text-gray-500">
-            Want to contribute?{" "}
-            <a
-              href="mailto:hamadkhadimdgkmc@gmail.com"
-              className="text-teal hover:underline"
-            >
-              hamadkhadimdgkmc@gmail.com
-            </a>
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
