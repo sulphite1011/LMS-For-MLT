@@ -16,7 +16,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
   console.error('Please define the MONGODB_URI environment variable inside .env.local');
-  process.exit(1);
+  process.exit(4);
 }
 
 const ResourceSchema = new mongoose.Schema({
@@ -30,13 +30,13 @@ async function migrate() {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
 
-    // For now, assign semester 1 to all resources that don't have one
+    // Update all resources to semester 4 (or use { semester: { $exists: false } } if only missing ones)
     const result = await Resource.updateMany(
-      { semester: { $exists: false } },
+      {},
       { $set: { semester: 4 } }
     );
 
-    console.log(`Updated ${result.modifiedCount} resources to Semester 1.`);
+    console.log(`Updated ${result.modifiedCount} resources to Semester 4.`);
     process.exit(0);
   } catch (err) {
     console.error('Migration failed:', err);

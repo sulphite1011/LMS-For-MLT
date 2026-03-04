@@ -14,6 +14,7 @@ export interface IUserDoc extends mongoose.Document {
   isPending?: boolean;
   favoriteResources: mongoose.Types.ObjectId[];
   likedResources: mongoose.Types.ObjectId[];
+  semester?: number; // 1-10
   createdAt: Date;
   createdBy?: mongoose.Types.ObjectId;
 }
@@ -32,6 +33,7 @@ const UserSchema = new Schema<IUserDoc>({
   isPending: { type: Boolean, default: false },
   favoriteResources: [{ type: Schema.Types.ObjectId, ref: "Resource" }],
   likedResources: [{ type: Schema.Types.ObjectId, ref: "Resource" }],
+  semester: { type: Number, min: 1, max: 10 },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: "User" },
 });

@@ -6,6 +6,7 @@ import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { BookOpen, LayoutDashboard, Menu, X, User as UserIcon } from "lucide-react";
 import { useState } from "react";
+import { NotificationBell } from "./NotificationBell";
 
 export function Navbar() {
   const { userRole, isLoaded: authLoaded } = useAuthState();
@@ -57,14 +58,17 @@ export function Navbar() {
                   )}
                 </div>
               )}
-              <UserButton
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    avatarBox: "w-8 h-8",
-                  },
-                }}
-              />
+              <div className="flex items-center gap-1 ml-2">
+                <NotificationBell />
+                <UserButton
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      avatarBox: "w-8 h-8",
+                    },
+                  }}
+                />
+              </div>
             </SignedIn>
 
             <SignedOut>

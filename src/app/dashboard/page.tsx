@@ -26,6 +26,7 @@ interface UserProfile {
   role: string;
   favoriteResources: string[];
   likedResources: string[];
+  semester?: number;
   createdAt: string;
 }
 
@@ -71,6 +72,7 @@ export default function DashboardPage() {
   const [editMode, setEditMode] = useState(false);
   const [editUsername, setEditUsername] = useState("");
   const [editBio, setEditBio] = useState("");
+  const [editSemester, setEditSemester] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
 
   // Avatar upload
@@ -176,6 +178,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           username: editUsername,
           bio: editBio,
+          semester: editSemester || undefined,
           ...(customAvatar ? { customAvatar } : {}),
         }),
       });
@@ -209,6 +212,7 @@ export default function DashboardPage() {
     console.log("[Dashboard] startEdit called. Profile:", profile, "ClerkUser:", clerkUser?.username);
     setEditUsername(profile?.username || clerkUser?.username || "");
     setEditBio(profile?.bio || "");
+    setEditSemester(profile?.semester || "");
     setAvatarPreview(null);
     setAvatarFile(null);
     setEditMode(true);
@@ -293,11 +297,34 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <textarea value={editBio} onChange={e => setEditBio(e.target.value)} placeholder="Tell us about yourself..." rows={2} className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white/90 text-sm w-full placeholder:text-white/40 focus:outline-none focus:border-teal/60 resize-none" maxLength={300} />
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-white/60 text-sm">Semester:</span>
+                    <select
+                      value={editSemester}
+                      onChange={e => setEditSemester(e.target.value === "" ? "" : Number(e.target.value))}
+                      className="bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-white text-sm focus:outline-none focus:border-teal/60"
+                    >
+                      <option value="" className="text-gray-900">Not Set</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => (
+                        <option key={s} value={s} className="text-gray-900">Semester {s}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               ) : (
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-white">{profile?.username || clerkUser.username}</h1>
                   <p className="text-white/60 text-sm mt-0.5">{clerkUser.primaryEmailAddress?.emailAddress}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {profile?.semester ? (
+                      <span className="bg-teal/20 text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal/30">
+                        Semester {profile.semester}
+                      </span>
+                    ) : (
+                      <span className="text-white/30 text-[10px] italic">Semester not set</span>
+                    )}
+                  </div>
                   {profile?.bio && <p className="text-white/80 text-sm mt-2 max-w-md">{profile.bio}</p>}
                   <p className="text-white/40 text-xs mt-2 flex items-center gap-1.5 justify-center sm:justify-start">
                     <Award className="w-3.5 h-3.5" />

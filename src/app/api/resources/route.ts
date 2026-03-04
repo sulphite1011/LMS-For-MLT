@@ -198,6 +198,32 @@ export async function POST(req: NextRequest) {
 
     const resource = await Resource.create(resourceData);
 
+    // Trigger Notifications for users in the same semester
+    if (resource.semester) {
+      try {
+        const Notification = (await import("@/models/Notification")).default;
+        const usersToNotify = await User.find({
+          semester: resource.semester,
+          clerkId: { $ne: user.clerkId }, // Don't notify the uploader
+        }).select("clerkId");
+
+        if (usersToNotify.length > 0) {
+          const notifications = usersToNotify.map((u) => ({
+            recipientId: u.clerkId,
+            type: "NEW_RESOURCE",
+            title: "New Resource Available",
+            message: `A new resource "${resource.title}" has been added to Semester ${resource.semester}.`,
+            link: `/resource/${resource._id}`,
+            isRead: false,
+          }));
+          await Notification.insertMany(notifications);
+        }
+      } catch (notifyError) {
+        console.error("Failed to send resource notifications:", notifyError);
+        // Don't fail the resource upload if notification fails
+      }
+    }
+
     return NextResponse.json(
       { _id: resource._id, title: resource.title },
       { status: 201 }
