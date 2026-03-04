@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
 
     await Promise.all(promises);
 
+    console.log(`[Broadcast API] Successfully sent to ${usersToNotify.length} users.`);
+
     return NextResponse.json({
       success: true,
       count: usersToNotify.length,

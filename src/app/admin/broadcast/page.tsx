@@ -78,8 +78,8 @@ export default function BroadcastPage() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Admin Broadcast</h1>
-          <p className="text-white/40 text-sm mt-1 flex items-center gap-1.5">
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Admin Broadcast</h1>
+          <p className="text-slate-500 text-sm mt-1 flex items-center gap-1.5">
             <Info className="w-3.5 h-3.5" />
             Send instant alerts to all students or specific semesters.
           </p>
@@ -93,40 +93,40 @@ export default function BroadcastPage() {
           animate={{ opacity: 1, x: 0 }}
           className="lg:col-span-2 space-y-6"
         >
-          <form onSubmit={handleSend} className="bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6 backdrop-blur-md shadow-2xl">
+          <form onSubmit={handleSend} className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-white/60 mb-2">Subject / Title</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">Subject / Title</label>
                 <input
                   type="text"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="e.g. Upcoming Exam Schedule"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:border-teal/50 transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-white/60 mb-2">Announcement Message</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">Announcement Message</label>
                 <textarea
                   value={message}
                   onChange={e => setMessage(e.target.value)}
                   placeholder="Compose your message here..."
                   rows={5}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:border-teal/50 transition-all resize-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal transition-all resize-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-white/60 mb-2">Target URL (Optional)</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">Target URL (Optional)</label>
                 <input
                   type="text"
                   value={link}
                   onChange={e => setLink(e.target.value)}
                   placeholder="/dashboard"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white placeholder:text-white/20 focus:outline-none focus:border-teal/50 transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal transition-all"
                 />
               </div>
             </div>
@@ -134,7 +134,7 @@ export default function BroadcastPage() {
             <button
               type="submit"
               disabled={sending}
-              className="w-full h-14 bg-teal text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-teal-dark active:scale-[0.98] transition-all shadow-xl shadow-teal/20 disabled:opacity-50"
+              className="w-full h-14 bg-teal text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-teal-dark active:scale-[0.98] transition-all shadow-lg shadow-teal/10 disabled:opacity-50"
             >
               {sending ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -155,8 +155,8 @@ export default function BroadcastPage() {
           transition={{ delay: 0.1 }}
           className="space-y-6"
         >
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-6 backdrop-blur-md">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <Users className="w-5 h-5 text-teal" /> Target Audience
             </h3>
 
@@ -166,7 +166,7 @@ export default function BroadcastPage() {
                 onClick={() => toggleTarget("all")}
                 className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${targets.includes("all")
                   ? "bg-teal/10 border-teal text-teal"
-                  : "bg-white/5 border-white/10 text-white/60 hover:border-white/20"
+                  : "bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200"
                   }`}
               >
                 <div className="flex items-center gap-3 font-semibold">
@@ -180,7 +180,7 @@ export default function BroadcastPage() {
                 onClick={() => toggleTarget("general")}
                 className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${targets.includes("general")
                   ? "bg-teal/10 border-teal text-teal"
-                  : "bg-white/5 border-white/10 text-white/60 hover:border-white/20"
+                  : "bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200"
                   }`}
               >
                 <div className="flex items-center gap-3 font-semibold">
@@ -190,8 +190,8 @@ export default function BroadcastPage() {
               </button>
             </div>
 
-            <div className="pt-4 border-t border-white/10">
-              <p className="text-[10px] uppercase font-bold text-white/30 mb-3 tracking-widest">Specific Semesters</p>
+            <div className="pt-4 border-t border-slate-100">
+              <p className="text-[10px] uppercase font-bold text-slate-400 mb-3 tracking-widest">Specific Semesters</p>
               <div className="grid grid-cols-4 gap-2">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => (
                   <button
@@ -199,8 +199,8 @@ export default function BroadcastPage() {
                     type="button"
                     onClick={() => toggleTarget(String(s))}
                     className={`h-10 rounded-xl border text-xs font-bold transition-all ${targets.includes(String(s))
-                      ? "bg-teal text-white border-teal shadow-lg shadow-teal/20"
-                      : "bg-white/5 border-white/10 text-white/40 hover:border-white/20"
+                      ? "bg-teal text-white border-teal shadow-md shadow-teal/10"
+                      : "bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200"
                       }`}
                   >
                     S{s}
