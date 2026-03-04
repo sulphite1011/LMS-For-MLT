@@ -31,6 +31,9 @@ export interface IResourceDoc extends mongoose.Document {
   description?: string;
   semester?: number | string;
   createdBy: mongoose.Types.ObjectId;
+  viewsCount: number;
+  likesCount: number;
+  favoritesCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -82,6 +85,9 @@ const ResourceSchema = new Schema<IResourceDoc>(
     description: { type: String, trim: true },
     semester: { type: Schema.Types.Mixed, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    viewsCount: { type: Number, default: 0 },
+    likesCount: { type: Number, default: 0 },
+    favoritesCount: { type: Number, default: 0 },
   },
   {
     timestamps: true,

@@ -45,7 +45,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Promote current user and delete pending record
+    // 3. Remove the pending placeholder FIRST to free up the unique username count
+    await User.deleteOne({ _id: pendingAdmin._id });
+
+    // 4. Promote current user
     const updatedUser = await User.findOneAndUpdate(
       { clerkId: currentUser.clerkId },
       {
@@ -56,9 +59,6 @@ export async function POST(req: NextRequest) {
       },
       { new: true }
     );
-
-    // Remove the pending placeholder
-    await User.deleteOne({ _id: pendingAdmin._id });
 
     return NextResponse.json({
       success: true,

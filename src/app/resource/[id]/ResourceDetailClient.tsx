@@ -16,6 +16,7 @@ import {
   Calendar,
   Star,
   Lock,
+  Heart,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
@@ -60,7 +61,10 @@ interface Resource {
   externalLinks?: ExternalLink[]; // new multiple external links
   youtubeUrls: string[];
   createdAt: string;
-  createdBy: { _id: string; clerkId: string };
+  createdBy: { _id: string; username: string; userHandle?: string; clerkId: string };
+  viewsCount: number;
+  likesCount: number;
+  favoritesCount: number;
   averageRating?: number | string;
   totalRatings?: number;
 }
@@ -328,14 +332,23 @@ export default function ResourceDetailClient({ id }: { id: string }) {
                     })}
                   </p>
                 </div>
-                {resource.fileData?.fileName && (
-                  <div>
-                    <span className="text-gray-400">File</span>
-                    <p className="font-medium text-gray-700">
-                      {resource.fileData.fileName}
-                    </p>
+                <div>
+                  <span className="text-gray-400">Author</span>
+                  <p className="font-medium text-text-primary">
+                    {resource.createdBy?.username || "Unknown Admin"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-400">Engagement</span>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="font-medium text-gray-700 flex items-center gap-1">
+                      <Heart className="w-3.5 h-3.5 text-red-400" /> {resource.likesCount || 0}
+                    </span>
+                    <span className="font-medium text-gray-700 flex items-center gap-1">
+                      <BookOpen className="w-3.5 h-3.5 text-teal" /> {resource.viewsCount?.toLocaleString() || 0}
+                    </span>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -502,6 +515,12 @@ export default function ResourceDetailClient({ id }: { id: string }) {
                     r.fileData?.fileType === "pdf" ||
                     r.fileData?.fileType === "image"
                   }
+                  createdBy={r.createdBy}
+                  viewsCount={r.viewsCount}
+                  likesCount={r.likesCount}
+                  favoritesCount={r.favoritesCount}
+                  averageRating={r.averageRating}
+                  totalRatings={r.totalRatings}
                   isFavorite={currentUser?.favoriteResources?.includes(r._id)}
                   isLiked={currentUser?.likedResources?.includes(r._id)}
                 />

@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
       Resource.find(filter)
         .select("-fileData.fileContent -bannerImageData -files.fileContent")
         .populate("subjectId", "name")
-        .populate("createdBy", "clerkId")
+        .populate("createdBy", "username userHandle clerkId")
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)

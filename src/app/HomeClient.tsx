@@ -24,7 +24,10 @@ interface Resource {
   averageRating?: number | string;
   totalRatings?: number;
   semester?: number;
-  createdBy?: { clerkId: string };
+  createdBy?: { username: string; userHandle?: string; clerkId: string };
+  viewsCount?: number;
+  likesCount?: number;
+  favoritesCount?: number;
 }
 
 interface HomeClientProps {
@@ -192,7 +195,10 @@ function ResourceItem({ resource, currentUser }: { resource: Resource; currentUs
           resource.fileData?.fileType === "image" ||
           (resource.files && resource.files.length > 0)
         }
-        resourceAuthorId={resource.createdBy?.clerkId}
+        createdBy={resource.createdBy}
+        viewsCount={resource.viewsCount}
+        likesCount={resource.likesCount}
+        favoritesCount={resource.favoritesCount}
         averageRating={resource.averageRating}
         totalRatings={resource.totalRatings}
         isFavorite={currentUser?.favoriteResources?.includes(resource._id)}

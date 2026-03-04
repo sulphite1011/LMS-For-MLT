@@ -17,7 +17,9 @@ import { CardSkeleton } from "@/components/ui/Skeleton";
 
 interface Stats {
   resources: number;
-  subjects: number;
+  totalViews: number;
+  averageRating: number;
+  totalRatings: number;
   users: number;
 }
 
@@ -25,7 +27,9 @@ export default function AdminDashboard() {
   const { username, userRole } = useAuthState();
   const [stats, setStats] = useState<Stats>({
     resources: 0,
-    subjects: 0,
+    totalViews: 0,
+    averageRating: 0,
+    totalRatings: 0,
     users: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -33,16 +37,20 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [resRes, subRes] = await Promise.all([
-          fetch("/api/resources?limit=1"),
-          fetch("/api/subjects"),
+        const [analyticRes, userRes] = await Promise.all([
+          fetch("/api/admin/analytics"),
+          userRole === "superAdmin" ? fetch("/api/users?limit=1") : Promise.resolve({ json: () => ({ total: 0 }) })
         ]);
-        const resData = await resRes.json();
-        const subData = await subRes.json();
+
+        const analyticData = await analyticRes.json();
+        const userData = userRole === "superAdmin" ? await (userRes as Response).json() : { total: 0 };
+
         setStats({
-          resources: resData.total || 0,
-          subjects: subData.length || 0,
-          users: 0,
+          resources: analyticData.totalResources || 0,
+          totalViews: analyticData.totalViews || 0,
+          averageRating: analyticData.averageRating || 0,
+          totalRatings: analyticData.totalRatings || 0,
+          users: userData.total || 0,
         });
       } catch (err) {
         console.error("Failed to fetch stats:", err);
@@ -51,26 +59,26 @@ export default function AdminDashboard() {
       }
     };
     fetchStats();
-  }, []);
+  }, [userRole]);
 
   const statCards = [
     {
-      label: "Total Resources",
+      label: "My Resources",
       value: stats.resources,
       icon: FileText,
       color: "bg-blue-500",
       lightColor: "bg-blue-50",
     },
     {
-      label: "Subjects",
-      value: stats.subjects,
+      label: "Total Views",
+      value: stats.totalViews.toLocaleString(),
       icon: BookOpen,
       color: "bg-[#14b8a6]",
       lightColor: "bg-teal-50",
     },
     {
-      label: "Growth",
-      value: "+12%",
+      label: "Avg Rating",
+      value: stats.averageRating > 0 ? `${stats.averageRating}/5` : "N/A",
       icon: TrendingUp,
       color: "bg-green-500",
       lightColor: "bg-green-50",
@@ -79,7 +87,7 @@ export default function AdminDashboard() {
 
   if (userRole === "superAdmin") {
     statCards.push({
-      label: "Admin Users",
+      label: "Total Users",
       value: stats.users,
       icon: Users,
       color: "bg-purple-500",

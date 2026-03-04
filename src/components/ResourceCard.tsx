@@ -19,7 +19,10 @@ interface ResourceCardProps {
   hasFile?: boolean;
   averageRating?: number | string;
   totalRatings?: number;
-  resourceAuthorId?: string;
+  createdBy?: { username: string; userHandle?: string; clerkId: string };
+  viewsCount?: number;
+  likesCount?: number;
+  favoritesCount?: number;
   isFavorite?: boolean;
   isLiked?: boolean;
   onFavoriteToggle?: (_id: string, action: "added" | "removed") => void;
@@ -37,6 +40,7 @@ const typeIcons: Record<ResourceType, React.ReactNode> = {
 export function ResourceCard({
   _id, title, description, resourceType, bannerImageUrl,
   subjectName, hasFile, averageRating, totalRatings,
+  createdBy, viewsCount = 0, likesCount = 0, favoritesCount = 0,
   isFavorite = false, isLiked = false,
   onFavoriteToggle, onLikeToggle,
 }: ResourceCardProps) {
@@ -180,12 +184,27 @@ export function ResourceCard({
             </div>
             <h3 className="font-semibold text-text-primary text-base line-clamp-2 mb-2 group-hover:text-teal transition-colors">{title}</h3>
             {description && <p className="text-sm text-gray-500 line-clamp-2 flex-1">{description}</p>}
+
+            <div className="mt-3 flex items-center justify-between text-[11px] text-gray-400">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <Heart className="w-3 h-3" /> {likesCount}
+                </span>
+                <span className="flex items-center gap-1">
+                  <BookOpen className="w-3 h-3 text-gray-300" /> {viewsCount.toLocaleString()} views
+                </span>
+              </div>
+              {createdBy && (
+                <span className="font-medium truncate max-w-[100px]">By {createdBy.username}</span>
+              )}
+            </div>
+
             {totalRatings !== undefined && totalRatings > 0 && (
-              <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold">
+              <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold">
                 <div className="flex items-center gap-1 text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-md">
                   <Star className="w-3 h-3 fill-current" />{averageRating}
                 </div>
-                <span className="text-gray-400 font-normal">({totalRatings} {totalRatings === 1 ? "rating" : "ratings"})</span>
+                <span className="text-gray-400 font-normal">({totalRatings})</span>
               </div>
             )}
           </div>

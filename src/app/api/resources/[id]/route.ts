@@ -18,10 +18,15 @@ export async function GET(
       return NextResponse.json({ error: "Invalid resource ID" }, { status: 400 });
     }
 
-    const resource = await Resource.findById(id)
+    // 1. Fetch resource and INCREMENT view count
+    const resource = await Resource.findByIdAndUpdate(
+      id,
+      { $inc: { viewsCount: 1 } },
+      { new: true }
+    )
       .select("-fileData.fileContent -bannerImageData -files.fileContent")
       .populate("subjectId", "name")
-      .populate("createdBy", "clerkId")
+      .populate("createdBy", "username userHandle clerkId")
       .lean();
 
     if (!resource) {
@@ -66,6 +71,18 @@ export async function PUT(
   try {
     const user = await requireAdmin();
     const { id } = await params;
+
+    await dbConnect();
+    const existingResource = await Resource.findById(id);
+    if (!existingResource) {
+      return NextResponse.json({ error: "Resource not found" }, { status: 404 });
+    }
+
+    // Ownership Check: Super Admin can do anything, regular admin only their own
+    if (user.role !== "superAdmin" && existingResource.createdBy.toString() !== user._id.toString()) {
+      return NextResponse.json({ error: "Forbidden: You can only edit your own resources" }, { status: 403 });
+    }
+
     const formData = await req.formData();
 
     const title = formData.get("title") as string;
@@ -225,10 +242,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
     const { id } = await params;
 
     await dbConnect();
+    const existingResource = await Resource.findById(id);
+    if (!existingResource) {
+      return NextResponse.json({ error: "Resource not found" }, { status: 404 });
+    }
+
+    // Ownership Check
+    if (user.role !== "superAdmin" && existingResource.createdBy.toString() !== user._id.toString()) {
+      return NextResponse.json({ error: "Forbidden: You can only delete your own resources" }, { status: 403 });
+    }
 
     const resource = await Resource.findByIdAndDelete(id);
     if (!resource) {
