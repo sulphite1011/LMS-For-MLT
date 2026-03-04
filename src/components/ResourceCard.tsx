@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { BookOpen, FileText, Video, FileCheck, HelpCircle, BookMarked, Star, Bookmark, Heart } from "lucide-react";
 import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
 
@@ -48,6 +48,10 @@ export function ResourceCard({
   const [localFav, setLocalFav] = useState(isFavorite);
   const [localLike, setLocalLike] = useState(isLiked);
   const [loading, setLoading] = useState(false);
+
+  // Sync props → local state when user data loads asynchronously
+  useEffect(() => { setLocalLike(isLiked); }, [isLiked]);
+  useEffect(() => { setLocalFav(isFavorite); }, [isFavorite]);
 
   const handleFav = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -195,7 +199,7 @@ export function ResourceCard({
                 </span>
               </div>
               {createdBy && (
-                <span className="font-medium truncate max-w-[100px]">By {createdBy.username}</span>
+                <span className="font-medium truncate max-w-[130px] text-teal-600 bg-teal-50/80 px-1.5 py-0.5 rounded-md text-[11px] border border-teal-100">By {createdBy.username}</span>
               )}
             </div>
 
