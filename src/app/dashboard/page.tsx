@@ -555,9 +555,18 @@ export default function DashboardPage() {
                         } else {
                           toast.error("Failed to sync with server");
                         }
-                      } catch (err) {
+                      } catch (err: any) {
                         console.error("Push subscription error:", err);
-                        toast.error("Enable push notifications failed");
+
+                        // BRAVE SPECIFIC FIX: Brave blocks Google Push Service by default
+                        if (err.name === "AbortError" && (navigator as any).brave) {
+                          toast.error(
+                            "Brave requires a setting to be enabled! Please go to brave://settings/privacy and enable 'Use Google Services for Push Messaging'.",
+                            { duration: 6000 }
+                          );
+                        } else {
+                          toast.error("Enable push notifications failed");
+                        }
                       }
                     }}
                     className="flex items-center gap-2 px-6 py-3 bg-teal text-white rounded-xl hover:bg-teal-dark transition-all font-semibold text-sm shadow-sm hover:shadow-md"
