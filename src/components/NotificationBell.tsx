@@ -140,126 +140,137 @@ export function NotificationBell() {
       <AnimatePresence>
         {isOpen && (
           <>
-            <div
-              className="fixed inset-0 z-40"
+            {/* Backdrop for mobile to focus on the drawer */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-navy/20 backdrop-blur-sm z-40 md:hidden"
               onClick={() => setIsOpen(false)}
             />
+
             <motion.div
-              initial={{
-                opacity: 0,
-                y: 10,
-              }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{
-                opacity: 0,
-                y: 10,
-              }}
-              className="absolute top-full right-0 mt-3 w-[calc(100vw-2rem)] md:w-96 max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed top-16 left-0 right-0 bottom-0 md:bottom-auto md:absolute md:top-full md:right-0 md:left-auto md:mt-3 w-full md:w-[420px] bg-white md:rounded-3xl shadow-2xl border-t md:border border-slate-100 z-50 overflow-hidden flex flex-col"
             >
-              <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-y-3 bg-gray-50/50">
-                <h3 className="font-bold text-gray-900 shrink-0">Notifications</h3>
-                <div className="flex items-center gap-2 sm:gap-3">
-                  {permission !== "granted" && (
+              {/* Premium Header */}
+              <div className="bg-navy p-5 flex items-center justify-between relative overflow-hidden shrink-0">
+                <div className="absolute inset-0 bg-teal/10 pointer-events-none" />
+                <div className="relative z-10 flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-teal shadow-teal/20" />
+                  <h3 className="font-bold text-white text-lg tracking-tight">Updates</h3>
+                  {unreadCount > 0 && (
+                    <span className="bg-teal text-navy text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+                      {unreadCount} New
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative z-10 flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     <button
-                      onClick={subscribeToPush}
-                      className="text-[10px] bg-teal/10 text-teal px-2 py-1 rounded-full font-bold hover:bg-teal/20 transition-colors"
+                      onClick={markAllAsRead}
+                      className="text-[11px] font-bold text-teal-400 hover:text-white transition-colors"
                     >
-                      Enable Alerts
+                      Mark all read
                     </button>
-                  )}
-                  {notifications.length > 0 && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-[9px] sm:text-[10px] text-teal hover:underline font-medium"
-                      >
-                        Read all
-                      </button>
-                      <span className="text-gray-300">|</span>
-                      <button
-                        onClick={clearAllNotifications}
-                        className="text-[10px] text-red-500 hover:underline font-medium"
-                      >
-                        Clear all
-                      </button>
-                    </div>
-                  )}
+                    <span className="w-1 h-1 bg-white/20 rounded-full" />
+                    <button
+                      onClick={clearAllNotifications}
+                      className="text-[11px] font-bold text-red-300 hover:text-white transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  </div>
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="text-gray-400 hover:text-gray-600 p-1"
+                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition-all"
                   >
-                    <X className="w-5 h-5 md:w-4 md:h-4" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              <div className="max-h-[60vh] md:max-h-[400px] overflow-y-auto">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar">
                 {notifications.length === 0 ? (
-                  <div className="p-10 text-center">
-                    <div className="w-12 h-12 bg-teal/5 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Bell className="w-6 h-6 text-teal" />
+                  <div className="flex flex-col items-center justify-center py-20 px-10 text-center">
+                    <div className="relative mb-6">
+                      <div className="w-20 h-20 bg-teal/10 rounded-full flex items-center justify-center animate-pulse">
+                        <Bell className="w-10 h-10 text-teal/40" />
+                      </div>
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-teal rounded-full border-4 border-white" />
                     </div>
-                    <p className="text-sm font-semibold text-gray-800 mb-1">
-                      {permission === "granted" ? "No notifications yet" : "Stay Informed"}
-                    </p>
-                    <p className="text-xs text-gray-500 mb-4 px-4">
+                    <h3 className="text-xl font-bold text-navy mb-2">You&apos;re All Caught Up</h3>
+                    <p className="text-sm text-slate-500 max-w-[240px] leading-relaxed">
                       {permission === "granted"
-                        ? "We'll notify you when new resources match your profile."
-                        : "Enable desktop alerts to get instant notifications about resources and replies."}
+                        ? "Check back later for important updates and replies."
+                        : "Enable desktop alerts to stay in the loop instantly."}
                     </p>
                     {permission !== "granted" && (
                       <button
                         onClick={subscribeToPush}
-                        className="bg-teal text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-teal-dark transition-all shadow-sm"
+                        className="mt-6 px-6 py-2.5 bg-navy text-teal rounded-xl text-xs font-bold hover:bg-navy-light transition-all shadow-lg shadow-navy/10"
                       >
-                        Enable Notifications
+                        Enable Push Alerts
                       </button>
                     )}
                   </div>
                 ) : (
-                  <div className="divide-y divide-gray-50">
+                  <div className="divide-y divide-slate-100">
                     {notifications.map((n) => (
                       <div
                         key={n._id}
-                        className={`group relative p-4 hover:bg-teal/5 transition-colors ${!n.isRead ? "bg-teal/2" : ""
+                        className={`group relative p-5 transition-all hover:bg-white border-l-4 ${!n.isRead ? "bg-white border-l-teal shadow-sm" : "bg-transparent border-l-transparent"
                           }`}
                       >
-                        <div className="flex gap-2 relative">
+                        <div className="flex gap-4 items-start">
                           <Link
                             href={n.link}
                             onClick={() => {
                               markAsRead(n._id);
                               setIsOpen(false);
                             }}
-                            className="flex-1 flex gap-3 min-w-0"
+                            className="flex-1 flex gap-4 min-w-0"
                           >
                             <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${n.type === "NEW_RESOURCE"
-                                ? "bg-blue-100 text-blue-600"
-                                : n.type === "SYSTEM_BROADCAST"
-                                  ? "bg-amber-100 text-amber-600"
-                                  : "bg-purple-100 text-purple-600"
+                              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${n.type === "NEW_RESOURCE"
+                                  ? "bg-blue-50 text-blue-500"
+                                  : n.type === "SYSTEM_BROADCAST"
+                                    ? "bg-amber-50 text-amber-500"
+                                    : "bg-teal/10 text-teal"
                                 }`}
                             >
                               {n.type === "NEW_RESOURCE" ? (
-                                <BookOpen className="w-5 h-5" />
+                                <BookOpen className="w-6 h-6" />
                               ) : n.type === "SYSTEM_BROADCAST" ? (
-                                <Megaphone className="w-5 h-5" />
+                                <Megaphone className="w-6 h-6" />
                               ) : (
-                                <MessageCircle className="w-5 h-5" />
+                                <MessageCircle className="w-6 h-6" />
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p
-                                className={`text-sm ${!n.isRead ? "font-bold text-gray-900" : "text-gray-600"
-                                  }`}
-                              >
+                              <div className="flex items-start justify-between">
+                                <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${n.type === "NEW_RESOURCE" ? "text-blue-400" : n.type === "SYSTEM_BROADCAST" ? "text-amber-400" : "text-teal"
+                                  }`}>
+                                  {n.type.replace("_", " ")}
+                                </span>
+                                {!n.isRead && (
+                                  <div className="w-2 h-2 rounded-full bg-teal animate-pulse" />
+                                )}
+                              </div>
+                              <h4 className={`text-sm leading-tight transition-colors ${!n.isRead ? "font-bold text-navy" : "font-medium text-slate-600"
+                                }`}>
                                 {n.title}
-                              </p>
-                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                              </h4>
+                              <p className="text-[13px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
                                 {n.message}
                               </p>
-                              <p className="text-[10px] text-gray-400 mt-1.5 uppercase font-medium">
+                              <p className="text-[10px] text-slate-400 mt-2 font-bold flex items-center gap-1.5 uppercase">
+                                <span className="w-1 h-1 bg-slate-300 rounded-full" />
                                 {new Date(n.createdAt).toLocaleDateString([], {
                                   month: "short",
                                   day: "numeric",
@@ -270,29 +281,33 @@ export function NotificationBell() {
                             </div>
                           </Link>
 
-                          {/* Action Buttons (Visible on hover on PC, Always on mobile) */}
-                          <div className="flex flex-col gap-1 md:opacity-0 md:group-hover:opacity-100 md:transition-opacity">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                deleteNotification(n._id);
-                              }}
-                              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 sm:text-gray-400 rounded-lg transition-colors bg-gray-50 md:bg-transparent"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-
-                          {!n.isRead && (
-                            <div className="w-2 h-2 bg-teal rounded-full mt-1.5 shrink-0" />
-                          )}
+                          {/* Delete Action */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              deleteNotification(n._id);
+                            }}
+                            className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 sm:opacity-0 sm:group-hover:opacity-100 transition-all shrink-0"
+                            title="Remove"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* View all footer (Mobile ONLY) */}
+              <div className="md:hidden p-4 bg-white border-t border-slate-100 shrink-0">
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="w-full py-3 bg-slate-100 text-navy font-bold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all text-sm"
+                >
+                  Close Drawer
+                </button>
               </div>
             </motion.div>
           </>
