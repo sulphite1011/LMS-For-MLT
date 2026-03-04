@@ -14,7 +14,7 @@ export default function BroadcastPage() {
   const [sending, setSending] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [link, setLink] = useState("/dashboard");
+  const link = "/dashboard";
   const [targets, setTargets] = useState<string[]>(["all"]);
 
   const toggleTarget = (t: string) => {
@@ -119,16 +119,6 @@ export default function BroadcastPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">Target URL (Optional)</label>
-                <input
-                  type="text"
-                  value={link}
-                  onChange={e => setLink(e.target.value)}
-                  placeholder="/dashboard"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal transition-all"
-                />
-              </div>
             </div>
 
             <button

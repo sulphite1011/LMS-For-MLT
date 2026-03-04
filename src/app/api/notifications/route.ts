@@ -13,8 +13,11 @@ export async function GET() {
 
     await dbConnect();
 
-    // Fetch latest 20 notifications
-    const notifications = await Notification.find({ recipientId: userId })
+    // Fetch latest 20 non-archived notifications
+    const notifications = await Notification.find({
+      recipientId: userId,
+      isArchived: { $ne: true }
+    })
       .sort({ createdAt: -1 })
       .limit(20)
       .lean();
@@ -26,7 +29,7 @@ export async function GET() {
   }
 }
 
-// PATCH /api/notifications/mark-read - Mark all notifications as read
+// PATCH /api/notifications - Update notification status (read/archived)
 export async function PATCH(req: NextRequest) {
   try {
     const { userId } = await auth();
@@ -37,25 +40,63 @@ export async function PATCH(req: NextRequest) {
     await dbConnect();
 
     const body = await req.json();
-    const { notificationId } = body;
+    const { notificationId, action } = body;
 
     if (notificationId) {
-      // Mark specific notification as read
+      const updateData: any = {};
+      if (action === "archive") updateData.isArchived = true;
+      else updateData.isRead = true;
+
       await Notification.updateOne(
         { _id: notificationId, recipientId: userId },
-        { $set: { isRead: true } }
+        { $set: updateData }
       );
     } else {
-      // Mark all as read
-      await Notification.updateMany(
-        { recipientId: userId, isRead: false },
-        { $set: { isRead: true } }
-      );
+      // Bulk actions
+      if (action === "archive_all") {
+        await Notification.updateMany(
+          { recipientId: userId, isArchived: false },
+          { $set: { isArchived: true } }
+        );
+      } else {
+        // Mark all as read
+        await Notification.updateMany(
+          { recipientId: userId, isRead: false },
+          { $set: { isRead: true } }
+        );
+      }
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("PATCH /api/notifications/mark-read error:", error);
+    console.error("PATCH /api/notifications error:", error);
     return NextResponse.json({ error: "Failed to update notifications" }, { status: 500 });
+  }
+}
+
+// DELETE /api/notifications - Delete notifications (Trash)
+export async function DELETE(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await dbConnect();
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (id) {
+      await Notification.deleteOne({ _id: id, recipientId: userId });
+    } else {
+      // Clear all
+      await Notification.deleteMany({ recipientId: userId });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("DELETE /api/notifications error:", error);
+    return NextResponse.json({ error: "Failed to delete notifications" }, { status: 500 });
   }
 }

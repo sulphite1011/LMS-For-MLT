@@ -94,8 +94,8 @@ export default function AdminDashboard() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-2xl md:text-3xl font-bold text-[#1e293b]">
-          Welcome back, <span className="text-[#14b8a6]">{username}</span>
+        <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
+          Welcome back, <span className="text-teal">{username}</span>
         </h1>
         <p className="text-gray-500 mt-1">
           Here&apos;s an overview of your LMS.
@@ -124,7 +124,7 @@ export default function AdminDashboard() {
                   className={`w-12 h-12 ${stat.lightColor} rounded-xl flex items-center justify-center`}
                 >
                   <stat.icon
-                    className={`w-6 h-6 ${stat.color === "bg-[#14b8a6]" ? "text-[#14b8a6]" : ""}`}
+                    className={`w-6 h-6 ${stat.color === "bg-teal" ? "text-teal" : ""}`}
                     style={{
                       color:
                         stat.color === "bg-blue-500"
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
                   />
                 </div>
               </div>
-              <div className="text-2xl font-bold text-[#1e293b]">
+              <div className="text-2xl font-bold text-text-primary">
                 {stat.value}
               </div>
               <div className="text-sm text-gray-500 mt-1">{stat.label}</div>
@@ -149,14 +149,14 @@ export default function AdminDashboard() {
 
       {/* Quick Actions */}
       <div>
-        <h2 className="text-lg font-semibold text-[#1e293b] mb-4">
+        <h2 className="text-lg font-semibold text-text-primary mb-4">
           Quick Actions
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link href="/admin/resources/new">
             <motion.div
               whileHover={{ scale: 1.02 }}
-              className="bg-gradient-to-br from-[#14b8a6] to-[#0d9488] text-white rounded-2xl p-6 shadow-md cursor-pointer"
+              className="bg-linear-to-br from-teal to-teal-dark text-white rounded-2xl p-6 shadow-md cursor-pointer"
             >
               <Plus className="w-8 h-8 mb-3" />
               <h3 className="font-semibold text-lg">Add Resource</h3>
@@ -184,10 +184,10 @@ export default function AdminDashboard() {
           <Link href="/admin/subjects">
             <motion.div
               whileHover={{ scale: 1.02 }}
-              className="bg-white border-2 border-dashed border-gray-200 hover:border-[#14b8a6] rounded-2xl p-6 cursor-pointer transition-colors"
+              className="bg-white border-2 border-dashed border-gray-200 hover:border-teal rounded-2xl p-6 cursor-pointer transition-colors"
             >
               <BookOpen className="w-8 h-8 mb-3 text-gray-400" />
-              <h3 className="font-semibold text-lg text-[#1e293b]">
+              <h3 className="font-semibold text-lg text-text-primary">
                 Manage Subjects
               </h3>
               <p className="text-gray-500 text-sm mt-1">
@@ -200,10 +200,10 @@ export default function AdminDashboard() {
           <Link href="/admin/resources">
             <motion.div
               whileHover={{ scale: 1.02 }}
-              className="bg-white border-2 border-dashed border-gray-200 hover:border-[#14b8a6] rounded-2xl p-6 cursor-pointer transition-colors"
+              className="bg-white border-2 border-dashed border-gray-200 hover:border-teal rounded-2xl p-6 cursor-pointer transition-colors"
             >
               <FileText className="w-8 h-8 mb-3 text-gray-400" />
-              <h3 className="font-semibold text-lg text-[#1e293b]">
+              <h3 className="font-semibold text-lg text-text-primary">
                 All Resources
               </h3>
               <p className="text-gray-500 text-sm mt-1">

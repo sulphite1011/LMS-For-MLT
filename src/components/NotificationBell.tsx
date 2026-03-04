@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Bell, X, BookOpen, MessageCircle } from "lucide-react";
+import { Bell, X, BookOpen, MessageCircle, Archive, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -77,6 +77,58 @@ export function NotificationBell() {
     }
   };
 
+  const archiveNotification = async (id: string) => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        body: JSON.stringify({ notificationId: id, action: "archive" }),
+      });
+      setNotifications(notifications.filter((n) => n._id !== id));
+      setUnreadCount((prev) => notifications.find(n => n._id === id && !n.isRead) ? Math.max(0, prev - 1) : prev);
+    } catch (error) {
+      console.error("Failed to archive notification:", error);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      await fetch(`/api/notifications?id=${id}`, {
+        method: "DELETE",
+      });
+      setNotifications(notifications.filter((n) => n._id !== id));
+      setUnreadCount((prev) => notifications.find(n => n._id === id && !n.isRead) ? Math.max(0, prev - 1) : prev);
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await fetch("/api/notifications", {
+        method: "DELETE",
+      });
+      setNotifications([]);
+      setUnreadCount(0);
+      toast.success("Notifications cleared");
+    } catch (error) {
+      console.error("Failed to clear notifications:", error);
+    }
+  };
+
+  const archiveAllNotifications = async () => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        body: JSON.stringify({ action: "archive_all" }),
+      });
+      setNotifications([]);
+      setUnreadCount(0);
+      toast.success("Notifications archived");
+    } catch (error) {
+      console.error("Failed to archive all notifications:", error);
+    }
+  };
+
   const subscribeToPush = async () => {
     const success = await subscribeUserToPush();
     if (success) {
@@ -120,11 +172,11 @@ export function NotificationBell() {
                 opacity: 0,
                 y: 10,
               }}
-              className="fixed bottom-4 inset-x-4 md:absolute md:inset-auto md:right-0 md:top-full mt-2 w-auto md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              className="fixed bottom-4 inset-x-4 md:absolute md:inset-auto md:right-0 md:top-full mt-2 w-auto md:w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
             >
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                <h3 className="font-bold text-gray-900">Notifications</h3>
-                <div className="flex items-center gap-3">
+              <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-y-3 bg-gray-50/50">
+                <h3 className="font-bold text-gray-900 shrink-0">Notifications</h3>
+                <div className="flex items-center gap-2 sm:gap-3">
                   {permission !== "granted" && (
                     <button
                       onClick={subscribeToPush}
@@ -133,13 +185,22 @@ export function NotificationBell() {
                       Enable Alerts
                     </button>
                   )}
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllAsRead}
-                      className="text-xs text-teal hover:underline font-medium"
-                    >
-                      Mark all as read
-                    </button>
+                  {notifications.length > 0 && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-[9px] sm:text-[10px] text-teal hover:underline font-medium"
+                      >
+                        Read all
+                      </button>
+                      <span className="text-gray-300">|</span>
+                      <button
+                        onClick={clearAllNotifications}
+                        className="text-[10px] text-red-500 hover:underline font-medium"
+                      >
+                        Clear all
+                      </button>
+                    </div>
                   )}
                   <button
                     onClick={() => setIsOpen(false)}
@@ -176,53 +237,84 @@ export function NotificationBell() {
                 ) : (
                   <div className="divide-y divide-gray-50">
                     {notifications.map((n) => (
-                      <Link
+                      <div
                         key={n._id}
-                        href={n.link}
-                        onClick={() => {
-                          markAsRead(n._id);
-                          setIsOpen(false);
-                        }}
-                        className={`block p-4 hover:bg-teal/5 transition-colors relative ${!n.isRead ? "bg-teal/2" : ""
+                        className={`group relative p-4 hover:bg-teal/5 transition-colors ${!n.isRead ? "bg-teal/2" : ""
                           }`}
                       >
-                        <div className="flex gap-3">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${n.type === "NEW_RESOURCE"
-                              ? "bg-blue-100 text-blue-600"
-                              : "bg-purple-100 text-purple-600"
-                              }`}
+                        <div className="flex gap-2 relative">
+                          <Link
+                            href={n.link}
+                            onClick={() => {
+                              markAsRead(n._id);
+                              setIsOpen(false);
+                            }}
+                            className="flex-1 flex gap-3 min-w-0"
                           >
-                            {n.type === "NEW_RESOURCE" ? (
-                              <BookOpen className="w-5 h-5" />
-                            ) : (
-                              <MessageCircle className="w-5 h-5" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p
-                              className={`text-sm ${!n.isRead ? "font-bold text-gray-900" : "text-gray-600"
+                            <div
+                              className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${n.type === "NEW_RESOURCE"
+                                ? "bg-blue-100 text-blue-600"
+                                : "bg-purple-100 text-purple-600"
                                 }`}
                             >
-                              {n.title}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                              {n.message}
-                            </p>
-                            <p className="text-[10px] text-gray-400 mt-2">
-                              {new Date(n.createdAt).toLocaleDateString([], {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
+                              {n.type === "NEW_RESOURCE" ? (
+                                <BookOpen className="w-5 h-5" />
+                              ) : (
+                                <MessageCircle className="w-5 h-5" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={`text-sm ${!n.isRead ? "font-bold text-gray-900" : "text-gray-600"
+                                  }`}
+                              >
+                                {n.title}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                {n.message}
+                              </p>
+                              <p className="text-[10px] text-gray-400 mt-1.5 uppercase font-medium">
+                                {new Date(n.createdAt).toLocaleDateString([], {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                          </Link>
+
+                          {/* Action Buttons (Visible on hover) */}
+                          <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                archiveNotification(n._id);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-teal hover:bg-teal/5 rounded-lg transition-colors"
+                              title="Archive"
+                            >
+                              <Archive className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                deleteNotification(n._id);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
+
                           {!n.isRead && (
                             <div className="w-2 h-2 bg-teal rounded-full mt-1.5 shrink-0" />
                           )}
                         </div>
-                      </Link>
+                      </div>
                     ))}
                   </div>
                 )}

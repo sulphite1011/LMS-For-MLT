@@ -96,7 +96,7 @@ export function NotificationOnboarding() {
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+          className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
         >
           <button
             onClick={handleDismiss}
@@ -105,16 +105,15 @@ export function NotificationOnboarding() {
             <X className="w-5 h-5" />
           </button>
 
-          <div className="p-8 text-center">
+          <div className="p-6 sm:p-8 text-center overflow-y-auto custom-scrollbar flex-1">
             {step === 1 ? (
               <>
-                <div className="w-16 h-16 bg-teal/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <div className="w-16 h-16 bg-teal/10 rounded-2xl flex items-center justify-center mx-auto mb-6 shrink-0">
                   <GraduationCap className="w-8 h-8 text-teal" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to MLT Study Hub</h2>
-                <p className="text-gray-500 mb-8">Select your current semester to receive personalized resource alerts.</p>
-
-                <div className="grid grid-cols-5 gap-3 mb-8">
+                <p className="text-gray-500 mb-8 text-sm sm:text-base">Select your current semester to receive personalized resource alerts.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((s) => (
                     <button
                       key={s}
@@ -169,7 +168,7 @@ export function NotificationOnboarding() {
             <div className={`h-full bg-teal transition-all duration-500 ${step === 1 ? "w-1/2" : "w-full"}`} />
           </div>
         </motion.div>
-      </div>
-    </AnimatePresence>
+      </div >
+    </AnimatePresence >
   );
 }

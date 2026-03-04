@@ -148,7 +148,7 @@ export default function NewResourcePage() {
           <ArrowLeft className="w-5 h-5 text-gray-500" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-[#1e293b]">Add New Resource</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Add New Resource</h1>
           <p className="text-gray-500 text-sm mt-1">Upload study material for students</p>
         </div>
       </div>
@@ -156,7 +156,7 @@ export default function NewResourcePage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Info */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg">Basic Information</h2>
+          <h2 className="font-semibold text-text-primary text-lg">Basic Information</h2>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
             <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Enter resource title" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm" required />
@@ -228,7 +228,7 @@ export default function NewResourcePage() {
 
         {/* Banner Image */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg">Banner Image</h2>
+          <h2 className="font-semibold text-text-primary text-lg">Banner Image</h2>
           <div {...getBannerRootProps()} className="border-2 border-dashed border-gray-200 hover:border-teal rounded-xl p-6 text-center cursor-pointer transition-colors">
             <input {...getBannerInputProps()} />
             {bannerPreview ? (
@@ -246,7 +246,7 @@ export default function NewResourcePage() {
 
         {/* PDF Files */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg flex items-center gap-2">
+          <h2 className="font-semibold text-text-primary text-lg flex items-center gap-2">
             <FileText className="w-5 h-5 text-teal" /> PDF Files
             <span className="text-xs text-gray-400 font-normal">(up to 5 files, 10MB each)</span>
           </h2>
@@ -282,7 +282,7 @@ export default function NewResourcePage() {
 
         {/* External Links */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg flex items-center gap-2">
+          <h2 className="font-semibold text-text-primary text-lg flex items-center gap-2">
             <Globe className="w-5 h-5 text-teal" /> External Links
             <span className="text-xs text-gray-400 font-normal">(Google Drive, Slides, GitHub…)</span>
           </h2>
@@ -304,7 +304,7 @@ export default function NewResourcePage() {
 
         {/* YouTube URLs */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg flex items-center gap-2">
+          <h2 className="font-semibold text-text-primary text-lg flex items-center gap-2">
             <Youtube className="w-5 h-5 text-red-500" /> YouTube Videos
           </h2>
           {youtubeUrls.map((url, i) => (
