@@ -50,8 +50,9 @@ export async function POST(req: NextRequest) {
       { clerkId: currentUser.clerkId },
       {
         role: "admin",
-        // Preserve original username if desired, or update to the new one
-        // Here we'll stick with the Clerk-synced username but give admin role
+        username: pendingAdmin.username,
+        // Update userHandle if it's currently a default one
+        userHandle: pendingAdmin.userHandle || undefined,
       },
       { new: true }
     );
