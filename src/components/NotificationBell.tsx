@@ -172,7 +172,7 @@ export function NotificationBell() {
                 opacity: 0,
                 y: 10,
               }}
-              className="fixed bottom-4 inset-x-4 md:absolute md:inset-auto md:right-0 md:top-full mt-2 w-auto md:w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              className="fixed top-16 inset-x-4 md:absolute md:inset-auto md:right-0 md:top-full mt-2 w-auto md:w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
             >
               <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-y-3 bg-gray-50/50">
                 <h3 className="font-bold text-gray-900 shrink-0">Notifications</h3>
