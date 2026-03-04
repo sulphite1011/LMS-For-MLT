@@ -5,6 +5,7 @@ import { Bell, X, BookOpen, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { subscribeUserToPush } from "@/lib/push-client";
 
 interface INotification {
   _id: string;
@@ -77,45 +78,10 @@ export function NotificationBell() {
   };
 
   const subscribeToPush = async () => {
-    try {
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      if (result !== "granted") {
-        toast.error("Permission denied for notifications");
-        return;
-      }
-
-      const register = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      await navigator.serviceWorker.ready;
-
-      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!publicKey) throw new Error("VAPID public key not found");
-
-      const padding = "=".repeat((4 - (publicKey.length % 4)) % 4);
-      const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
-
-      const subscription = await register.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: outputArray
-      });
-
-      const res = await fetch("/api/notifications/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(subscription)
-      });
-
-      if (res.ok) {
-        toast.success("Notifications enabled!");
-      }
-    } catch (error) {
-      console.error("Subscription failed:", error);
-      toast.error("Failed to enable notifications");
+    const success = await subscribeUserToPush();
+    if (success) {
+      setPermission("granted");
+      toast.success("Notifications enabled!");
     }
   };
 
@@ -147,16 +113,14 @@ export function NotificationBell() {
             <motion.div
               initial={{
                 opacity: 0,
-                y: typeof window !== 'undefined' && window.innerWidth < 768 ? 100 : 10,
-                scale: typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 0.95
+                y: 10,
               }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{
                 opacity: 0,
-                y: typeof window !== 'undefined' && window.innerWidth < 768 ? 100 : 10,
-                scale: typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 0.95
+                y: 10,
               }}
-              className="fixed inset-x-0 bottom-0 md:absolute md:inset-auto md:right-0 md:top-full mt-2 w-full md:w-96 bg-white rounded-t-3xl md:rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              className="fixed bottom-4 inset-x-4 md:absolute md:inset-auto md:right-0 md:top-full mt-2 w-auto md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
             >
               <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                 <h3 className="font-bold text-gray-900">Notifications</h3>
@@ -186,7 +150,7 @@ export function NotificationBell() {
                 </div>
               </div>
 
-              <div className="max-h-[70vh] md:max-h-[400px] overflow-y-auto pb-6 md:pb-0">
+              <div className="max-h-[60vh] md:max-h-[400px] overflow-y-auto">
                 {notifications.length === 0 ? (
                   <div className="p-10 text-center">
                     <div className="w-12 h-12 bg-teal/5 rounded-full flex items-center justify-center mx-auto mb-3">

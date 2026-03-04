@@ -5,6 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, Check, X, GraduationCap, ArrowRight, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { subscribeUserToPush } from "@/lib/push-client";
 
 export function NotificationOnboarding() {
   const { user, isLoaded } = useUser();
@@ -63,46 +64,11 @@ export function NotificationOnboarding() {
 
   const handleEnableNotifications = async () => {
     setLoading(true);
-    try {
-      const result = await Notification.requestPermission();
-      if (result === "granted") {
-        const register = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-        await navigator.serviceWorker.ready;
-
-        const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!publicKey) throw new Error("VAPID public key not found");
-
-        const padding = "=".repeat((4 - (publicKey.length % 4)) % 4);
-        const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-          outputArray[i] = rawData.charCodeAt(i);
-        }
-
-        const subscription = await register.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: outputArray
-        });
-
-        await fetch("/api/notifications/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(subscription)
-        });
-
-        toast.success("All set! Notifications enabled.");
-        handleDismiss();
-      } else {
-        toast.error("Permission denied");
-        handleDismiss();
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to enable notifications");
+    const success = await subscribeUserToPush();
+    setLoading(false);
+    if (success) {
+      toast.success("All set! Notifications enabled.");
       handleDismiss();
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -154,8 +120,8 @@ export function NotificationOnboarding() {
                       key={s}
                       onClick={() => setSelectedSemester(s)}
                       className={`h-12 rounded-xl border-2 font-bold transition-all ${selectedSemester === s
-                          ? "border-teal bg-teal/5 text-teal"
-                          : "border-gray-100 text-gray-400 hover:border-teal/30 hover:text-teal/70"
+                        ? "border-teal bg-teal/5 text-teal"
+                        : "border-gray-100 text-gray-400 hover:border-teal/30 hover:text-teal/70"
                         }`}
                     >
                       {s}

@@ -14,6 +14,7 @@ import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
 import { useAuthState } from "@/contexts/AuthContext";
 import { formatDistanceToNow, getAvatar } from "@/lib/utils";
+import { subscribeUserToPush } from "@/lib/push-client";
 import type { Metadata } from "next";
 
 interface UserProfile {
@@ -514,59 +515,9 @@ export default function DashboardPage() {
 
                   <button
                     onClick={async () => {
-                      try {
-                        const permission = await Notification.requestPermission();
-                        if (permission !== "granted") {
-                          toast.error("Permission denied for notifications");
-                          return;
-                        }
-
-                        // 2. Wait for Service Worker to be READY
-                        const register = await navigator.serviceWorker.register("/sw.js", {
-                          scope: "/"
-                        });
-
-                        // Wait until the service worker is active
-                        await navigator.serviceWorker.ready;
-
-                        // 3. Decode Public Key
-                        const publicKey = "BJ1rYwu55-dp_8ArvzWfflqfXx3KROlLRxkxUNpfH4jfRo-M5Je5MGcNEcXIXGQqV2HQrOVoIG_TDAdu60TmW-g";
-                        const convertedVapidKey = urlBase64ToUint8Array(publicKey);
-
-                        // 4. Unsubscribe old if any (optional but clean)
-                        const oldSub = await register.pushManager.getSubscription();
-                        if (oldSub) await oldSub.unsubscribe();
-
-                        // 5. Subscribe
-                        const subscription = await register.pushManager.subscribe({
-                          userVisibleOnly: true,
-                          applicationServerKey: convertedVapidKey
-                        });
-
-                        // Save to backend
-                        const res = await fetch("/api/notifications/subscribe", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify(subscription)
-                        });
-
-                        if (res.ok) {
-                          toast.success("Push notifications enabled!");
-                        } else {
-                          toast.error("Failed to sync with server");
-                        }
-                      } catch (err: any) {
-                        console.error("Push subscription error:", err);
-
-                        // BRAVE SPECIFIC FIX: Brave blocks Google Push Service by default
-                        if (err.name === "AbortError" && (navigator as any).brave) {
-                          toast.error(
-                            "Brave requires a setting to be enabled! Please go to brave://settings/privacy and enable 'Use Google Services for Push Messaging'.",
-                            { duration: 6000 }
-                          );
-                        } else {
-                          toast.error("Enable push notifications failed");
-                        }
+                      const success = await subscribeUserToPush();
+                      if (success) {
+                        toast.success("Push notifications enabled!");
                       }
                     }}
                     className="flex items-center gap-2 px-6 py-3 bg-teal text-white rounded-xl hover:bg-teal-dark transition-all font-semibold text-sm shadow-sm hover:shadow-md"
