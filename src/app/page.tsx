@@ -30,7 +30,7 @@ async function getInitialData() {
       Resource.find({})
         .select("-fileData.fileContent -bannerImageData -files.fileContent")
         .populate("subjectId", "name")
-        .populate("createdBy", "clerkId")
+        .populate("createdBy", "username userHandle clerkId")
         .sort({ createdAt: -1 })
         .limit(20)
         .lean(),

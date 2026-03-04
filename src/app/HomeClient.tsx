@@ -49,6 +49,22 @@ export default function HomeClient({
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
 
   const [isFirstMount, setIsFirstMount] = useState(true);
+  const [localUser, setLocalUser] = useState<any>(currentUser);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/users/me");
+        if (res.ok) {
+          const data = await res.json();
+          setLocalUser(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+      }
+    };
+    if (!localUser) fetchUser();
+  }, [localUser]);
 
   const fetchResources = useCallback(async () => {
     setLoading(true);
@@ -147,7 +163,7 @@ export default function HomeClient({
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {groupResources.map((resource) => (
-                      <ResourceItem key={resource._id} resource={resource} currentUser={currentUser} />
+                      <ResourceItem key={resource._id} resource={resource} localUser={localUser} />
                     ))}
                   </div>
                 </section>
@@ -164,7 +180,7 @@ export default function HomeClient({
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
               >
                 {resources.map((resource) => (
-                  <ResourceItem key={resource._id} resource={resource} currentUser={currentUser} />
+                  <ResourceItem key={resource._id} resource={resource} localUser={localUser} />
                 ))}
               </motion.div>
             )}
@@ -175,7 +191,7 @@ export default function HomeClient({
   );
 }
 
-function ResourceItem({ resource, currentUser }: { resource: Resource; currentUser: any }) {
+function ResourceItem({ resource, localUser }: { resource: Resource; localUser: any }) {
   return (
     <motion.div
       variants={{
@@ -201,8 +217,8 @@ function ResourceItem({ resource, currentUser }: { resource: Resource; currentUs
         favoritesCount={resource.favoritesCount}
         averageRating={resource.averageRating}
         totalRatings={resource.totalRatings}
-        isFavorite={currentUser?.favoriteResources?.includes(resource._id)}
-        isLiked={currentUser?.likedResources?.includes(resource._id)}
+        isFavorite={localUser?.favoriteResources?.some((id: string) => String(id) === String(resource._id))}
+        isLiked={localUser?.likedResources?.some((id: string) => String(id) === String(resource._id))}
       />
     </motion.div>
   );

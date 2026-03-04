@@ -521,8 +521,8 @@ export default function ResourceDetailClient({ id }: { id: string }) {
                   favoritesCount={r.favoritesCount}
                   averageRating={r.averageRating}
                   totalRatings={r.totalRatings}
-                  isFavorite={currentUser?.favoriteResources?.includes(r._id)}
-                  isLiked={currentUser?.likedResources?.includes(r._id)}
+                  isFavorite={currentUser?.favoriteResources?.some((fid: any) => String(fid) === String(r._id))}
+                  isLiked={currentUser?.likedResources?.some((lid: any) => String(lid) === String(r._id))}
                 />
               ))}
             </div>
