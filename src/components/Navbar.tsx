@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { BookOpen, LayoutDashboard, Menu, X, User as UserIcon, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { NotificationBell } from "./NotificationBell";
+import { EnvironmentBadge } from "./EnvironmentBadge";
 
 export function Navbar() {
   const { userRole, isLoaded: authLoaded } = useAuthState();
@@ -150,6 +151,7 @@ export function Navbar() {
           </SignedOut>
         </motion.div>
       )}
+      <EnvironmentBadge />
     </nav>
   );
 }
