@@ -67,64 +67,53 @@ const UserSchema = new Schema<IUserDoc>({
 });
 
 // Transfer resources to Super Admin and cleanup likes if a user is deleted
-UserSchema.pre("deleteOne", { document: true, query: false }, async function (next) {
-  try {
-    const userId = this._id;
-    const clerkId = this.clerkId;
+UserSchema.pre("deleteOne", { document: true, query: false }, async function () {
+  const userId = this._id;
+  const clerkId = this.clerkId;
 
-    // 1. Find the Super Admin (Hamad)
-    const superAdmin = await mongoose.model("User").findOne({ role: "superAdmin" });
-    if (superAdmin) {
-      await Resource.updateMany(
-        { createdBy: userId },
-        { createdBy: superAdmin._id }
-      );
-    }
-
-    // 2. Cleanup likes in comments and replies (using clerkId)
-    await Comment.updateMany(
-      { likes: clerkId },
-      { $pull: { likes: clerkId } }
+  // 1. Find the Super Admin (Hamad)
+  const superAdmin = await mongoose.model("User").findOne({ role: "superAdmin" });
+  if (superAdmin) {
+    await Resource.updateMany(
+      { createdBy: userId },
+      { createdBy: superAdmin._id }
     );
-    await Comment.updateMany(
-      { "replies.likes": clerkId },
-      { $pull: { "replies.$[].likes": clerkId } }
-    );
-
-    next();
-  } catch (err: any) {
-    next(err as CallbackError);
   }
+
+  // 2. Cleanup likes in comments and replies (using clerkId)
+  await Comment.updateMany(
+    { likes: clerkId },
+    { $pull: { likes: clerkId } }
+  );
+  await Comment.updateMany(
+    { "replies.likes": clerkId },
+    { $pull: { "replies.$[].likes": clerkId } }
+  );
 });
 
 // Also handle findOneAndDelete
-UserSchema.pre("findOneAndDelete", async function (next) {
-  try {
-    const userId = this.getQuery()._id;
-    if (userId) {
-      const user = await mongoose.model("User").findById(userId);
-      if (user) {
-        const clerkId = user.clerkId;
-        const superAdmin = await mongoose.model("User").findOne({ role: "superAdmin" });
-        if (superAdmin) {
-          await Resource.updateMany(
-            { createdBy: userId },
-            { createdBy: superAdmin._id }
-          );
-        }
-        await Comment.updateMany(
-          { likes: clerkId },
-          { $pull: { likes: clerkId } }
-        );
-        await Comment.updateMany(
-          { "replies.likes": clerkId },
-          { $pull: { "replies.$[].likes": clerkId } }
+UserSchema.pre("findOneAndDelete", async function () {
+  const userId = this.getQuery()._id;
+  if (userId) {
+    const user = await mongoose.model("User").findById(userId);
+    if (user) {
+      const clerkId = user.clerkId;
+      const superAdmin = await mongoose.model("User").findOne({ role: "superAdmin" });
+      if (superAdmin) {
+        await Resource.updateMany(
+          { createdBy: userId },
+          { createdBy: superAdmin._id }
         );
       }
+      await Comment.updateMany(
+        { likes: clerkId },
+        { $pull: { likes: clerkId } }
+      );
+      await Comment.updateMany(
+        { "replies.likes": clerkId },
+        { $pull: { "replies.$[].likes": clerkId } }
+      );
     }
-    next();
-  } catch (err: any) {
-    next(err as CallbackError);
   }
 });
 

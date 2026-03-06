@@ -96,25 +96,15 @@ const ResourceSchema = new Schema<IResourceDoc>(
 );
 
 // Cascade delete comments when a resource is deleted
-ResourceSchema.pre("deleteOne", { document: true, query: false }, async function (next) {
-  try {
-    await Comment.deleteMany({ resourceId: this._id });
-    next();
-  } catch (err: any) {
-    next(err as CallbackError);
-  }
+ResourceSchema.pre("deleteOne", { document: true, query: false }, async function () {
+  await Comment.deleteMany({ resourceId: this._id });
 });
 
 // Also handle findOneAndDelete if used
-ResourceSchema.pre("findOneAndDelete", async function (next) {
-  try {
-    const docToId = this.getQuery()._id;
-    if (docToId) {
-      await Comment.deleteMany({ resourceId: docToId });
-    }
-    next();
-  } catch (err: any) {
-    next(err as CallbackError);
+ResourceSchema.pre("findOneAndDelete", async function () {
+  const docToId = this.getQuery()._id;
+  if (docToId) {
+    await Comment.deleteMany({ resourceId: docToId });
   }
 });
 
