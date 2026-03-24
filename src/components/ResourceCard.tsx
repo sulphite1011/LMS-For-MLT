@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, FileText, Video, FileCheck, HelpCircle, BookMarked, Star, Bookmark, Heart } from "lucide-react";
+import { BookOpen, FileText, Video, FileCheck, HelpCircle, BookMarked, Star, Bookmark, Heart, Share2 } from "lucide-react";
 import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
 import { useState, useCallback, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
@@ -115,6 +115,14 @@ export function ResourceCard({
     } finally { setLoading(false); }
   }, [user, _id, localLike, onLikeToggle]);
 
+  const handleShare = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/resource/${_id}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard!");
+  }, [_id]);
+
   return (
     <motion.div
       whileHover={{ scale: 1.02, y: -4 }}
@@ -145,27 +153,36 @@ export function ResourceCard({
               {typeIcons[resourceType]}{resourceType}
             </div>
 
-            {/* Fav + Like buttons (top-right) */}
-            {user && (
-              <div className="absolute top-3 right-3 flex gap-1.5 z-20">
-                <button
-                  onClick={handleLike}
-                  disabled={loading}
-                  title={localLike ? "Unlike" : "Like"}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm shadow transition-all ${localLike ? "bg-red-500 text-white" : "bg-white/80 text-gray-500 hover:text-red-500"}`}
-                >
-                  <Heart className={`w-3.5 h-3.5 ${localLike ? "fill-current" : ""}`} />
-                </button>
-                <button
-                  onClick={handleFav}
-                  disabled={loading}
-                  title={localFav ? "Remove from favorites" : "Add to favorites"}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm shadow transition-all ${localFav ? "bg-teal text-white" : "bg-white/80 text-gray-500 hover:text-teal"}`}
-                >
-                  <Bookmark className={`w-3.5 h-3.5 ${localFav ? "fill-current" : ""}`} />
-                </button>
-              </div>
-            )}
+            {/* Action buttons (top-right) */}
+            <div className="absolute top-3 right-3 flex gap-1.5 z-20">
+              <button
+                onClick={handleShare}
+                title="Share"
+                className="w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm shadow transition-all bg-white/80 text-gray-500 hover:text-blue-500"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+              </button>
+              {user && (
+                <>
+                  <button
+                    onClick={handleLike}
+                    disabled={loading}
+                    title={localLike ? "Unlike" : "Like"}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm shadow transition-all ${localLike ? "bg-red-500 text-white" : "bg-white/80 text-gray-500 hover:text-red-500"}`}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${localLike ? "fill-current" : ""}`} />
+                  </button>
+                  <button
+                    onClick={handleFav}
+                    disabled={loading}
+                    title={localFav ? "Remove from favorites" : "Add to favorites"}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm shadow transition-all ${localFav ? "bg-teal text-white" : "bg-white/80 text-gray-500 hover:text-teal"}`}
+                  >
+                    <Bookmark className={`w-3.5 h-3.5 ${localFav ? "fill-current" : ""}`} />
+                  </button>
+                </>
+              )}
+            </div>
 
             {hasFile && (
               <div className="absolute bottom-3 right-3 bg-white/90 text-gray-700 text-xs px-2 py-1 rounded-full flex items-center gap-1">

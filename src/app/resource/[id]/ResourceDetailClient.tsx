@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import toast from "react-hot-toast";
 import {
   ArrowLeft,
   BookOpen,
@@ -17,6 +18,7 @@ import {
   Star,
   Lock,
   Heart,
+  Share2,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -175,15 +177,31 @@ export default function ResourceDetailClient({ id }: { id: string }) {
         )}
         <div className="absolute inset-0 bg-linear-to-t from-navy via-navy/60 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-10 max-w-7xl mx-auto">
-          <motion.button
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-300 hover:text-white mb-4 w-fit transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">Back</span>
-          </motion.button>
+          <div className="flex items-center justify-between mb-4">
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              onClick={() => router.back()}
+              className="flex items-center gap-2 text-gray-300 hover:text-white w-fit transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">Back</span>
+            </motion.button>
+
+            <motion.button
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                toast.success("Link copied to clipboard!");
+              }}
+              className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-sm shadow-sm"
+              suppressHydrationWarning
+            >
+              <Share2 className="w-4 h-4" />
+              <span className="text-sm font-medium">Share</span>
+            </motion.button>
+          </div>
           <div className="flex items-center gap-3 mb-3">
             <span
               className={`${RESOURCE_TYPE_BG[resource.resourceType]} text-white text-xs font-medium px-3 py-1 rounded-full`}
