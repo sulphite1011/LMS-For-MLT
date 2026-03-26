@@ -16,14 +16,10 @@ import {
   Play,
   Calendar,
   Star,
-<<<<<<< HEAD
   Lock,
   Heart,
-=======
->>>>>>> 2ba1291 (Finished the share button)
   Share2,
 } from "lucide-react";
-import toast from "react-hot-toast";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ResourceCard } from "@/components/ResourceCard";
@@ -199,48 +195,25 @@ export default function ResourceDetailClient({ id }: { id: string }) {
         )}
         <div className="absolute inset-0 bg-linear-to-t from-navy via-navy/60 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-10 max-w-7xl mx-auto">
-<<<<<<< HEAD
-          <div className="flex items-center justify-between mb-4">
-=======
           <div className="flex justify-between items-center mb-4 w-full">
->>>>>>> 2ba1291 (Finished the share button)
             <motion.button
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               onClick={() => router.back()}
-<<<<<<< HEAD
-              className="flex items-center gap-2 text-gray-300 hover:text-white w-fit transition-colors"
-=======
               className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
->>>>>>> 2ba1291 (Finished the share button)
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="text-sm">Back</span>
             </motion.button>
-<<<<<<< HEAD
-
-            <motion.button
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                toast.success("Link copied to clipboard!");
-              }}
-              className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-sm shadow-sm"
-              suppressHydrationWarning
-            >
-              <Share2 className="w-4 h-4" />
-              <span className="text-sm font-medium">Share</span>
-=======
             <motion.button
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               onClick={handleShare}
               className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all backdrop-blur-md border border-white/10"
+              suppressHydrationWarning
             >
               <Share2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span>Share</span>
->>>>>>> 2ba1291 (Finished the share button)
+              <span className="text-sm font-medium">Share</span>
             </motion.button>
           </div>
           <div className="flex items-center gap-3 mb-3">
