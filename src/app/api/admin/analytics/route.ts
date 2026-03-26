@@ -15,7 +15,7 @@ export async function GET() {
     const filter = user.role === "superAdmin" ? {} : { createdBy: user._id };
 
     const [resources, ratingStats] = await Promise.all([
-      Resource.find(filter).select("viewsCount"),
+      Resource.find(filter).select("viewsCount").lean(),
       Comment.aggregate([
         {
           $lookup: {

@@ -21,7 +21,7 @@ export async function GET(
     const ratedComments = await Comment.find({
       resourceId: new mongoose.Types.ObjectId(id),
       rating: { $exists: true, $gt: 0 },
-    });
+    }).select("rating").lean();
 
     const totalRatings = ratedComments.length;
     const averageRating = totalRatings > 0
@@ -108,7 +108,7 @@ export async function POST(
     const ratedComments = await Comment.find({
       resourceId: new mongoose.Types.ObjectId(id),
       rating: { $exists: true, $gt: 0 },
-    });
+    }).select("rating").lean();
 
     const totalRatings = ratedComments.length;
     const averageRating = totalRatings > 0

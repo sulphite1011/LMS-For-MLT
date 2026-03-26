@@ -36,11 +36,11 @@ export async function GET(
       );
     }
 
-    // Fetch rating stats with robust ObjectId matching
+    // Fetch rating stats - use .select('rating').lean() for speed
     const ratedComments = await Comment.find({
       resourceId: new mongoose.Types.ObjectId(id),
-      rating: { $exists: true }
-    });
+      rating: { $exists: true, $gt: 0 }
+    }).select("rating").lean();
     const totalRatings = ratedComments.length;
     const averageRating = totalRatings > 0
       ? (ratedComments.reduce((acc, c) => acc + (c.rating || 0), 0) / totalRatings).toFixed(1)

@@ -1,8 +1,3 @@
-// This page renders on every request (dynamic) because it queries MongoDB directly.
-// This is scoped to just this page — other pages are NOT affected.
-// On Vercel, responses are still cached at the CDN edge for 30s via Cache-Control headers.
-export const dynamic = "force-dynamic";
-
 // No "use client" — this is a Server Component.
 // It fetches initial data server-side so the page renders with content immediately,
 // improving LCP and enabling crawlers to see actual resources.
