@@ -49,10 +49,6 @@ export function ResourceCard({
   const [localLike, setLocalLike] = useState(isLiked);
   const [loading, setLoading] = useState(false);
 
-  // Sync props → local state when user data loads asynchronously
-  useEffect(() => { setLocalLike(isLiked); }, [isLiked]);
-  useEffect(() => { setLocalFav(isFavorite); }, [isFavorite]);
-
   const handleFav = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
