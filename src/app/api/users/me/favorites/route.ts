@@ -77,6 +77,12 @@ export async function POST(req: NextRequest) {
 
     await user.save();
 
+    // Update Resource counts
+    const countField = type === "favorite" ? "favoritesCount" : "likesCount";
+    await Resource.findByIdAndUpdate(resourceId, {
+      $inc: { [countField]: action === "added" ? 1 : -1 }
+    });
+
     return NextResponse.json({ action, [field]: user[field] });
   } catch (error) {
     console.error("POST /api/users/me/favorites error:", error);

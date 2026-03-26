@@ -1,4 +1,5 @@
-import mongoose, { Schema, Model } from "mongoose";
+import mongoose, { Schema, Model, CallbackError } from "mongoose";
+import Comment from "./Comment";
 
 export interface IFileEntry {
   fileType: "pdf" | "image" | "external";
@@ -29,7 +30,11 @@ export interface IResourceDoc extends mongoose.Document {
   externalLinks: IExternalLink[];
   youtubeUrls: string[];
   description?: string;
+  semester?: number | string;
   createdBy: mongoose.Types.ObjectId;
+  viewsCount: number;
+  likesCount: number;
+  favoritesCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,12 +84,29 @@ const ResourceSchema = new Schema<IResourceDoc>(
     externalLinks: [ExternalLinkSchema],
     youtubeUrls: [{ type: String }],
     description: { type: String, trim: true },
+    semester: { type: Schema.Types.Mixed, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    viewsCount: { type: Number, default: 0 },
+    likesCount: { type: Number, default: 0 },
+    favoritesCount: { type: Number, default: 0 },
   },
   {
     timestamps: true,
   }
 );
+
+// Cascade delete comments when a resource is deleted
+ResourceSchema.pre("deleteOne", { document: true, query: false }, async function () {
+  await Comment.deleteMany({ resourceId: this._id });
+});
+
+// Also handle findOneAndDelete if used
+ResourceSchema.pre("findOneAndDelete", async function () {
+  const docToId = this.getQuery()._id;
+  if (docToId) {
+    await Comment.deleteMany({ resourceId: docToId });
+  }
+});
 
 ResourceSchema.index({ title: "text", description: "text" });
 // Composite indexes for filtered + sorted queries (e.g. ?subject=X&sort=newest)

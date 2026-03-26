@@ -1,19 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useUser, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
+import { useUser, SignedIn, SignedOut, RedirectToSignIn, SignOutButton } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import {
   User as UserIcon, Heart, Bookmark, MessageSquare, Edit3, Save, X,
   Camera, Loader2, BookOpen, Star, ChevronRight, ExternalLink,
-  FileText, Play, Award, Activity
+  FileText, Play, Award, Activity, LogOut
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
 import { useAuthState } from "@/contexts/AuthContext";
 import { formatDistanceToNow, getAvatar } from "@/lib/utils";
+import { subscribeUserToPush } from "@/lib/push-client";
 import type { Metadata } from "next";
 
 interface UserProfile {
@@ -26,6 +27,13 @@ interface UserProfile {
   role: string;
   favoriteResources: string[];
   likedResources: string[];
+  semester?: number;
+  primarySemester?: number;
+  notificationPreferences?: {
+    receiveAll: boolean;
+    receiveGeneral: boolean;
+    subscribedSemesters: number[];
+  };
   createdAt: string;
 }
 
@@ -55,6 +63,17 @@ const TABS = [
   { id: "activity", label: "Activity", icon: Activity },
 ];
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export default function DashboardPage() {
   const { user: clerkUser, isLoaded } = useUser();
   const { userImage: authImage } = useAuthState();
@@ -71,6 +90,12 @@ export default function DashboardPage() {
   const [editMode, setEditMode] = useState(false);
   const [editUsername, setEditUsername] = useState("");
   const [editBio, setEditBio] = useState("");
+  const [editSemester, setEditSemester] = useState<number | "">("");
+  const [editPreferences, setEditPreferences] = useState({
+    receiveAll: false,
+    receiveGeneral: true,
+    subscribedSemesters: [] as number[],
+  });
   const [saving, setSaving] = useState(false);
 
   // Avatar upload
@@ -176,6 +201,8 @@ export default function DashboardPage() {
         body: JSON.stringify({
           username: editUsername,
           bio: editBio,
+          primarySemester: editSemester || undefined,
+          notificationPreferences: editPreferences,
           ...(customAvatar ? { customAvatar } : {}),
         }),
       });
@@ -209,6 +236,12 @@ export default function DashboardPage() {
     console.log("[Dashboard] startEdit called. Profile:", profile, "ClerkUser:", clerkUser?.username);
     setEditUsername(profile?.username || clerkUser?.username || "");
     setEditBio(profile?.bio || "");
+    setEditSemester(profile?.primarySemester || profile?.semester || "");
+    setEditPreferences(profile?.notificationPreferences || {
+      receiveAll: false,
+      receiveGeneral: true,
+      subscribedSemesters: [],
+    });
     setAvatarPreview(null);
     setAvatarFile(null);
     setEditMode(true);
@@ -293,11 +326,103 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <textarea value={editBio} onChange={e => setEditBio(e.target.value)} placeholder="Tell us about yourself..." rows={2} className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white/90 text-sm w-full placeholder:text-white/40 focus:outline-none focus:border-teal/60 resize-none" maxLength={300} />
+
+                  <div className="flex flex-col gap-3 pt-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-white/60 text-sm">Primary Semester:</span>
+                      <select
+                        value={editSemester}
+                        onChange={e => setEditSemester(e.target.value === "" ? "" : Number(e.target.value))}
+                        className="bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-white text-sm focus:outline-none focus:border-teal/60"
+                      >
+                        <option value="" className="text-gray-900">Not Set</option>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => (
+                          <option key={s} value={s} className="text-gray-900">Semester {s}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/80 text-sm font-medium">Notification Preferences</span>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editPreferences.receiveAll}
+                            onChange={e => setEditPreferences(prev => ({ ...prev, receiveAll: e.target.checked }))}
+                            className="w-4 h-4 rounded border-white/20 bg-white/10 text-teal focus:ring-teal"
+                          />
+                          <span className="text-white/60 text-xs text-left">Receive all semester alerts (ignore filters)</span>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/80 text-[11px] font-medium leading-tight">General Announcements</span>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editPreferences.receiveGeneral}
+                            onChange={e => setEditPreferences(prev => ({ ...prev, receiveGeneral: e.target.checked }))}
+                            className="w-4 h-4 rounded border-white/20 bg-white/10 text-teal focus:ring-teal"
+                          />
+                          <span className="text-white/60 text-xs">Stay updated on system news</span>
+                        </label>
+                      </div>
+
+                      {!editPreferences.receiveAll && (
+                        <div className="space-y-2">
+                          <p className="text-white/50 text-[11px] mb-1">Select semesters to subscribe for alerts:</p>
+                          <div className="grid grid-cols-5 gap-2">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => {
+                                  const sub = editPreferences.subscribedSemesters;
+                                  setEditPreferences(prev => ({
+                                    ...prev,
+                                    subscribedSemesters: sub.includes(s) ? sub.filter(i => i !== s) : [...sub, s]
+                                  }));
+                                }}
+                                className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${editPreferences.subscribedSemesters.includes(s)
+                                  ? "bg-teal text-white border-teal shadow-lg shadow-teal/20"
+                                  : "bg-white/5 text-white/40 border-white/10 hover:border-white/30"
+                                  }`}
+                              >
+                                Sem {s}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-white">{profile?.username || clerkUser.username}</h1>
                   <p className="text-white/60 text-sm mt-0.5">{clerkUser.primaryEmailAddress?.emailAddress}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                    {profile?.primarySemester || profile?.semester ? (
+                      <span className="bg-teal/20 text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal/30">
+                        Semester {profile.primarySemester || profile.semester}
+                      </span>
+                    ) : (
+                      <span className="text-white/30 text-[10px] italic">Semester not set</span>
+                    )}
+
+                    {profile?.notificationPreferences?.receiveAll ? (
+                      <span className="bg-blue-500/20 text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-500/30">
+                        Subscribed to All
+                      </span>
+                    ) : profile?.notificationPreferences?.subscribedSemesters?.length ? (
+                      profile.notificationPreferences.subscribedSemesters.map(s => (
+                        <span key={s} className="bg-white/10 text-white/50 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10">
+                          S{s}
+                        </span>
+                      ))
+                    ) : null}
+                  </div>
                   {profile?.bio && <p className="text-white/80 text-sm mt-2 max-w-md">{profile.bio}</p>}
                   <p className="text-white/40 text-xs mt-2 flex items-center gap-1.5 justify-center sm:justify-start">
                     <Award className="w-3.5 h-3.5" />
@@ -395,12 +520,44 @@ export default function DashboardPage() {
                     <dd className="text-sm font-medium text-slate-900">{profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : ""}</dd>
                   </div>
                 </dl>
-              </div>
 
+                {/* Web Push Section */}
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                  <h4 className="text-sm font-semibold text-slate-800 mb-2">Browser Notifications</h4>
+                  <p className="text-xs text-slate-500 mb-4">Get notified even when you don't have the website open.</p>
+
+                  <button
+                    onClick={async () => {
+                      const success = await subscribeUserToPush();
+                      if (success) {
+                        toast.success("Push notifications enabled!");
+                      }
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 bg-teal text-white rounded-xl hover:bg-teal-dark transition-all font-semibold text-sm shadow-sm hover:shadow-md"
+                  >
+                    <Activity className="w-4 h-4" />
+                    Enable Desktop Notifications
+                  </button>
+                </div>
+
+                {/* Sign Out Section */}
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                  <SignOutButton signOutOptions={{ redirectUrl: "/" }}>
+                    <button className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-semibold text-sm shadow-sm hover:shadow-md">
+                      <LogOut className="w-4 h-4" />
+                      Sign Out from Account
+                    </button>
+                  </SignOutButton>
+                  <p className="mt-2 text-[10px] text-slate-400 px-1 italic">
+                    You will be redirected to the home page after signing out.
+                  </p>
+                </div>
+              </div>
+              {/* 
               <div className="bg-linear-to-br from-teal/5 to-teal/10 rounded-2xl p-6 border border-teal/20">
                 <h3 className="font-semibold text-teal text-sm mb-2">How to edit your profile</h3>
                 <p className="text-slate-600 text-sm">Click the <strong className="text-slate-800">Edit Profile</strong> button at the top to update your username, bio, and profile picture.</p>
-              </div>
+              </div> */}
             </motion.div>
           )}
 

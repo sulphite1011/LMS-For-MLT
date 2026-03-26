@@ -5,6 +5,7 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function AdminLayout({
   children,
@@ -12,6 +13,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { isLoaded, isSignedIn, userRole } = useAuthState();
+  const pathname = usePathname();
+
+  const isClaimPage = pathname === "/admin/claim";
+  const hasAdminAccess = userRole === "admin" || userRole === "superAdmin";
 
   if (!isLoaded) {
     return (
@@ -25,7 +30,8 @@ export default function AdminLayout({
     );
   }
 
-  if (!isSignedIn || !userRole) {
+  // Strictly block non-admins from admin routes (except the claim page)
+  if (!isSignedIn || (!isClaimPage && !hasAdminAccess)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="text-center p-8">
@@ -40,10 +46,10 @@ export default function AdminLayout({
           </p>
           <div className="flex gap-3 justify-center">
             <Link
-              href="/sign-in"
-              className="bg-[#14b8a6] text-white px-6 py-2.5 rounded-full font-medium hover:bg-[#0d9488] transition-colors"
+              href="/admin/claim"
+              className="bg-teal text-white px-6 py-2.5 rounded-full font-medium hover:bg-teal-dark transition-colors"
             >
-              Sign In
+              Verify Credentials
             </Link>
             <Link
               href="/"
@@ -57,6 +63,16 @@ export default function AdminLayout({
     );
   }
 
+  // If on the claim page, just show the content without the sidebar
+  if (isClaimPage) {
+    return (
+      <main className="flex-1 min-h-screen bg-slate-50">
+        {children}
+      </main>
+    );
+  }
+
+  // Standard admin layout with sidebar
   return (
     <div className="min-h-screen flex bg-gray-50">
       <AdminSidebar />

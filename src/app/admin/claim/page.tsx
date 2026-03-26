@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { KeyRound, User as UserIcon, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { KeyRound, User as UserIcon, ShieldCheck, ArrowRight, Loader2, Mail } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function ClaimAdminPage() {
@@ -106,9 +106,16 @@ export default function ClaimAdminPage() {
             </button>
           </form>
 
-          <p className="mt-8 text-center text-xs text-slate-400">
-            Don&apos;t have credentials? Contact the Super Admin to request access.
-          </p>
+          <div className="mt-10 pt-8 border-t border-slate-100 text-center">
+            <p className="text-sm text-slate-500 mb-3">Don&apos;t have credentials?</p>
+            <a
+              href="mailto:hamadkhadimdgkmc@gmail.com?subject=Admin Access Request"
+              className="inline-flex items-center gap-2 text-teal font-semibold hover:text-teal-dark transition-colors"
+            >
+              <Mail className="w-4 h-4" />
+              Contact Super Admin to Request Access
+            </a>
+          </div>
         </div>
       </motion.div>
     </div>

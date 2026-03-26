@@ -1,13 +1,9 @@
-// This page renders on every request (dynamic) because it queries MongoDB directly.
-// This is scoped to just this page — other pages are NOT affected.
-// On Vercel, responses are still cached at the CDN edge for 30s via Cache-Control headers.
-export const dynamic = "force-dynamic";
-
 // No "use client" — this is a Server Component.
 // It fetches initial data server-side so the page renders with content immediately,
 // improving LCP and enabling crawlers to see actual resources.
 import { BookOpen, Mail, ArrowRight, Sparkles } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import HomeClient from "./HomeClient";
 import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
@@ -16,18 +12,21 @@ import Comment from "@/models/Comment";
 import User from "@/models/User"; // Required for .populate("createdBy")
 import mongoose from "mongoose";
 
-const BASE_URL = "https://lms-for-mlt.vercel.app";
-
 // Fetch initial resources server-side (bypasses API round-trip, runs at the edge)
 async function getInitialData() {
   try {
     await dbConnect();
+    // Ensure models are registered before populate
+    // @ts-ignore
+    const _u = User.modelName;
+    // @ts-ignore
+    const _s = Subject.modelName;
 
     const [resources, subjects] = await Promise.all([
       Resource.find({})
         .select("-fileData.fileContent -bannerImageData -files.fileContent")
         .populate("subjectId", "name")
-        .populate("createdBy", "clerkId")
+        .populate("createdBy", "username userHandle clerkId")
         .sort({ createdAt: -1 })
         .limit(20)
         .lean(),
@@ -45,7 +44,6 @@ async function getInitialData() {
       const stats = ratingStats.find((s) => String(s._id) === String(resource._id));
       return {
         ...resource,
-        _id: String(resource._id),
         averageRating: stats ? Number(stats.averageRating.toFixed(1)) : 0,
         totalRatings: stats ? stats.totalRatings : 0,
       };
@@ -53,7 +51,7 @@ async function getInitialData() {
 
     return {
       resources: JSON.parse(JSON.stringify(resourcesWithRatings)),
-      subjects: JSON.parse(JSON.stringify(subjects.map((s) => ({ ...s, _id: String(s._id) })))),
+      subjects: JSON.parse(JSON.stringify(subjects)),
     };
   } catch (error) {
     console.error("[Homepage] Failed to fetch initial data:", error);
@@ -146,31 +144,7 @@ export default async function HomePage() {
         currentUser={null}
       />
 
-      {/* Footer */}
-      <footer className="bg-navy text-gray-400 py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-teal rounded-lg flex items-center justify-center">
-              <BookOpen className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-white">
-              Hamad&apos;s <span className="text-teal">LMS</span>
-            </span>
-          </div>
-          <p className="text-sm mb-4">
-            Medical Laboratory Technology Study Resources
-          </p>
-          <p className="text-xs text-gray-500">
-            Want to contribute?{" "}
-            <a
-              href="mailto:hamadkhadimdgkmc@gmail.com"
-              className="text-teal hover:underline"
-            >
-              hamadkhadimdgkmc@gmail.com
-            </a>
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

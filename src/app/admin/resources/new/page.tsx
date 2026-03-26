@@ -26,6 +26,7 @@ export default function NewResourcePage() {
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [subjectName, setSubjectName] = useState(""); // for display
+  const [semester, setSemester] = useState("");
   const [resourceType, setResourceType] = useState("");
   const [description, setDescription] = useState("");
   const [youtubeUrls, setYoutubeUrls] = useState<string[]>([""]);
@@ -97,6 +98,7 @@ export default function NewResourcePage() {
       formData.append("title", title);
       formData.append("subjectName", subjectName);
       formData.append("resourceType", resourceType);
+      formData.append("semester", semester);
       formData.append("description", description);
       formData.append("youtubeUrls", JSON.stringify(youtubeUrls.filter(Boolean)));
       formData.append("bannerImageUrl", bannerImageUrl);
@@ -146,7 +148,7 @@ export default function NewResourcePage() {
           <ArrowLeft className="w-5 h-5 text-gray-500" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-[#1e293b]">Add New Resource</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Add New Resource</h1>
           <p className="text-gray-500 text-sm mt-1">Upload study material for students</p>
         </div>
       </div>
@@ -154,7 +156,7 @@ export default function NewResourcePage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Info */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg">Basic Information</h2>
+          <h2 className="font-semibold text-text-primary text-lg">Basic Information</h2>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
             <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Enter resource title" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm" required />
@@ -186,6 +188,37 @@ export default function NewResourcePage() {
                 {resourceTypes.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Semester *</label>
+              <div className="flex gap-2">
+                <select
+                  value={semester === "" || !isNaN(Number(semester)) ? semester : "custom"}
+                  onChange={e => {
+                    if (e.target.value === "custom") setSemester("General");
+                    else setSemester(e.target.value);
+                  }}
+                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm bg-white"
+                  required
+                >
+                  <option value="">Select semester</option>
+                  {[...Array(10)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>Semester {i + 1}</option>
+                  ))}
+                  <option value="custom">Other / Custom</option>
+                </select>
+                {(semester !== "" && isNaN(Number(semester)) || semester === "custom") && (
+                  <input
+                    type="text"
+                    value={semester === "custom" ? "" : semester}
+                    onChange={e => setSemester(e.target.value)}
+                    placeholder="e.g. General"
+                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm"
+                    required
+                  />
+                )}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1 italic">Selecting "General" notifies everyone with general alerts enabled.</p>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -195,7 +228,7 @@ export default function NewResourcePage() {
 
         {/* Banner Image */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg">Banner Image</h2>
+          <h2 className="font-semibold text-text-primary text-lg">Banner Image</h2>
           <div {...getBannerRootProps()} className="border-2 border-dashed border-gray-200 hover:border-teal rounded-xl p-6 text-center cursor-pointer transition-colors">
             <input {...getBannerInputProps()} />
             {bannerPreview ? (
@@ -213,7 +246,7 @@ export default function NewResourcePage() {
 
         {/* PDF Files */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg flex items-center gap-2">
+          <h2 className="font-semibold text-text-primary text-lg flex items-center gap-2">
             <FileText className="w-5 h-5 text-teal" /> PDF Files
             <span className="text-xs text-gray-400 font-normal">(up to 5 files, 10MB each)</span>
           </h2>
@@ -249,7 +282,7 @@ export default function NewResourcePage() {
 
         {/* External Links */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg flex items-center gap-2">
+          <h2 className="font-semibold text-text-primary text-lg flex items-center gap-2">
             <Globe className="w-5 h-5 text-teal" /> External Links
             <span className="text-xs text-gray-400 font-normal">(Google Drive, Slides, GitHub…)</span>
           </h2>
@@ -271,7 +304,7 @@ export default function NewResourcePage() {
 
         {/* YouTube URLs */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="font-semibold text-[#1e293b] text-lg flex items-center gap-2">
+          <h2 className="font-semibold text-text-primary text-lg flex items-center gap-2">
             <Youtube className="w-5 h-5 text-red-500" /> YouTube Videos
           </h2>
           {youtubeUrls.map((url, i) => (
