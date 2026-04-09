@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useAuthState } from "@/contexts/AuthContext";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { BookOpen, LayoutDashboard, Menu, X, User as UserIcon } from "lucide-react";
+import { BookOpen, LayoutDashboard, Menu, X, User as UserIcon, ShieldCheck } from "lucide-react";
 import { useState } from "react";
+import { NotificationBell } from "./NotificationBell";
+import { EnvironmentBadge } from "./EnvironmentBadge";
 
 export function Navbar() {
   const { userRole, isLoaded: authLoaded } = useAuthState();
@@ -55,16 +57,28 @@ export function Navbar() {
                       Admin
                     </Link>
                   )}
+                  {authLoaded && userRole === "user" && (
+                    <Link
+                      href="/admin/claim"
+                      className="flex items-center gap-2 text-sm text-teal hover:bg-teal/10 px-3 py-2 rounded-full border border-teal/20 transition-colors"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      Verify Admin
+                    </Link>
+                  )}
                 </div>
               )}
-              <UserButton
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    avatarBox: "w-8 h-8",
-                  },
-                }}
-              />
+              <div className="flex items-center gap-1 ml-2">
+                <NotificationBell />
+                <UserButton
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      avatarBox: "w-8 h-8",
+                    },
+                  }}
+                />
+              </div>
             </SignedIn>
 
             <SignedOut>
@@ -77,17 +91,22 @@ export function Navbar() {
             </SignedOut>
           </div>
 
-          {/* Mobile menu button */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
-          </button>
+          {/* Mobile menu button / Actions */}
+          <div className="flex md:hidden items-center gap-2">
+            <SignedIn>
+              <NotificationBell />
+            </SignedIn>
+            <button
+              className="p-2"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -115,6 +134,11 @@ export function Navbar() {
                 Admin Dashboard
               </Link>
             )}
+            {userRole === "user" && (
+              <Link href="/admin/claim" className="block text-sm text-teal py-2 font-medium" onClick={() => setMobileMenuOpen(false)}>
+                Claim Admin Status
+              </Link>
+            )}
           </SignedIn>
           <SignedOut>
             <Link
@@ -127,6 +151,7 @@ export function Navbar() {
           </SignedOut>
         </motion.div>
       )}
+      <EnvironmentBadge />
     </nav>
   );
 }

@@ -14,11 +14,19 @@ export async function GET(
   try {
     await dbConnect();
     const { id } = await params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid resource ID" }, { status: 400 });
+    }
 
-    const resource = await Resource.findById(id)
+    // 1. Fetch resource and INCREMENT view count
+    const resource = await Resource.findByIdAndUpdate(
+      id,
+      { $inc: { viewsCount: 1 } },
+      { new: true }
+    )
       .select("-fileData.fileContent -bannerImageData -files.fileContent")
       .populate("subjectId", "name")
-      .populate("createdBy", "clerkId")
+      .populate("createdBy", "username userHandle clerkId")
       .lean();
 
     if (!resource) {
@@ -63,6 +71,18 @@ export async function PUT(
   try {
     const user = await requireAdmin();
     const { id } = await params;
+
+    await dbConnect();
+    const existingResource = await Resource.findById(id);
+    if (!existingResource) {
+      return NextResponse.json({ error: "Resource not found" }, { status: 404 });
+    }
+
+    // Ownership Check: Super Admin can do anything, regular admin only their own
+    if (user.role !== "superAdmin" && existingResource.createdBy.toString() !== user._id.toString()) {
+      return NextResponse.json({ error: "Forbidden: You can only edit your own resources" }, { status: 403 });
+    }
+
     const formData = await req.formData();
 
     const title = formData.get("title") as string;
@@ -74,6 +94,7 @@ export async function PUT(
     const externalLink = formData.get("externalLink") as string;
     const file = formData.get("file") as File | null;
     const bannerFile = formData.get("bannerImage") as File | null;
+    const semester = parseInt(formData.get("semester") as string || "0");
     const removeFile = formData.get("removeFile") === "true";
 
     if (!title || !subjectName || !resourceType) {
@@ -101,6 +122,7 @@ export async function PUT(
       subjectId: subject._id,
       resourceType,
       description: description?.trim() || "",
+      semester: semester > 0 ? semester : undefined,
       youtubeUrls,
     };
 
@@ -116,6 +138,7 @@ export async function PUT(
 
     if (removeFile) {
       updateData.fileData = undefined;
+      updateData.files = [];
     } else if (file && file.size > 0) {
       const maxSize = parseInt(process.env.MAX_FILE_SIZE || "10485760");
       if (file.size > maxSize) {
@@ -125,18 +148,66 @@ export async function PUT(
         );
       }
       const buffer = Buffer.from(await file.arrayBuffer());
-      updateData.fileData = {
+      const newFile = {
         fileType: file.type.includes("pdf") ? "pdf" : "image",
         fileContent: buffer,
         fileName: file.name,
         fileSize: file.size,
         mimeType: file.type,
       };
+
+      // Update both legacy and new arrays for consistency
+      updateData.fileData = newFile;
+      updateData.files = [newFile];
     } else if (externalLink) {
       updateData.fileData = {
         fileType: "external",
         externalLink,
       };
+      // For editing multiple links/files, we should ideally handle the new fields
+    }
+
+    // Support multiple files from FormData if provided
+    const files = formData.getAll("files") as File[];
+    if (files.length > 0) {
+      const maxSize = parseInt(process.env.MAX_FILE_SIZE || "10485760");
+      const processedFiles = [];
+      for (const f of files) {
+        if (!f || f.size === 0) continue;
+        if (f.size > maxSize) {
+          return NextResponse.json({ error: `File "${f.name}" exceeds 10MB` }, { status: 400 });
+        }
+        const buffer = Buffer.from(await f.arrayBuffer());
+        processedFiles.push({
+          fileType: f.type.includes("pdf") ? "pdf" : "image",
+          fileContent: buffer,
+          fileName: f.name,
+          fileSize: f.size,
+          mimeType: f.type,
+        });
+      }
+      if (processedFiles.length > 0) {
+        updateData.files = processedFiles;
+        updateData.fileData = processedFiles[0];
+      }
+    }
+
+    // Support multiple external links from FormData
+    const externalLinksRaw = formData.get("externalLinks") as string;
+    if (externalLinksRaw) {
+      try {
+        const parsed = JSON.parse(externalLinksRaw).filter((l: any) => l.url?.trim());
+        updateData.externalLinks = parsed.map((l: any) => ({
+          label: l.label,
+          url: l.url
+        }));
+        // Fallback for legacy
+        if (!updateData.fileData && parsed.length > 0) {
+          updateData.fileData = { fileType: "external", externalLink: parsed[0].url };
+        }
+      } catch (e) {
+        console.error("Failed to parse externalLinks", e);
+      }
     }
 
     const resource = await Resource.findByIdAndUpdate(id, updateData, {
@@ -171,10 +242,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
     const { id } = await params;
 
     await dbConnect();
+    const existingResource = await Resource.findById(id);
+    if (!existingResource) {
+      return NextResponse.json({ error: "Resource not found" }, { status: 404 });
+    }
+
+    // Ownership Check
+    if (user.role !== "superAdmin" && existingResource.createdBy.toString() !== user._id.toString()) {
+      return NextResponse.json({ error: "Forbidden: You can only delete your own resources" }, { status: 403 });
+    }
 
     const resource = await Resource.findByIdAndDelete(id);
     if (!resource) {

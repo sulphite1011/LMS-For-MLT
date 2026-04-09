@@ -3,9 +3,9 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, FileText, Video, FileCheck, HelpCircle, BookMarked, Star, Bookmark, Heart } from "lucide-react";
+import { BookOpen, FileText, Video, FileCheck, HelpCircle, BookMarked, Star, Bookmark, Heart, Share2 } from "lucide-react";
 import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
 
@@ -19,7 +19,10 @@ interface ResourceCardProps {
   hasFile?: boolean;
   averageRating?: number | string;
   totalRatings?: number;
-  resourceAuthorId?: string;
+  createdBy?: { username: string; userHandle?: string; clerkId: string };
+  viewsCount?: number;
+  likesCount?: number;
+  favoritesCount?: number;
   isFavorite?: boolean;
   isLiked?: boolean;
   onFavoriteToggle?: (_id: string, action: "added" | "removed") => void;
@@ -37,6 +40,7 @@ const typeIcons: Record<ResourceType, React.ReactNode> = {
 export function ResourceCard({
   _id, title, description, resourceType, bannerImageUrl,
   subjectName, hasFile, averageRating, totalRatings,
+  createdBy, viewsCount = 0, likesCount = 0, favoritesCount = 0,
   isFavorite = false, isLiked = false,
   onFavoriteToggle, onLikeToggle,
 }: ResourceCardProps) {
@@ -107,6 +111,14 @@ export function ResourceCard({
     } finally { setLoading(false); }
   }, [user, _id, localLike, onLikeToggle]);
 
+  const handleShare = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/resource/${_id}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard!");
+  }, [_id]);
+
   return (
     <motion.div
       whileHover={{ scale: 1.02, y: -4 }}
@@ -137,27 +149,36 @@ export function ResourceCard({
               {typeIcons[resourceType]}{resourceType}
             </div>
 
-            {/* Fav + Like buttons (top-right) */}
-            {user && (
-              <div className="absolute top-3 right-3 flex gap-1.5 z-20">
-                <button
-                  onClick={handleLike}
-                  disabled={loading}
-                  title={localLike ? "Unlike" : "Like"}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm shadow transition-all ${localLike ? "bg-red-500 text-white" : "bg-white/80 text-gray-500 hover:text-red-500"}`}
-                >
-                  <Heart className={`w-3.5 h-3.5 ${localLike ? "fill-current" : ""}`} />
-                </button>
-                <button
-                  onClick={handleFav}
-                  disabled={loading}
-                  title={localFav ? "Remove from favorites" : "Add to favorites"}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm shadow transition-all ${localFav ? "bg-teal text-white" : "bg-white/80 text-gray-500 hover:text-teal"}`}
-                >
-                  <Bookmark className={`w-3.5 h-3.5 ${localFav ? "fill-current" : ""}`} />
-                </button>
-              </div>
-            )}
+            {/* Action buttons (top-right) */}
+            <div className="absolute top-3 right-3 flex gap-1.5 z-20">
+              <button
+                onClick={handleShare}
+                title="Share"
+                className="w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm shadow transition-all bg-white/80 text-gray-500 hover:text-blue-500"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+              </button>
+              {user && (
+                <>
+                  <button
+                    onClick={handleLike}
+                    disabled={loading}
+                    title={localLike ? "Unlike" : "Like"}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm shadow transition-all ${localLike ? "bg-red-500 text-white" : "bg-white/80 text-gray-500 hover:text-red-500"}`}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${localLike ? "fill-current" : ""}`} />
+                  </button>
+                  <button
+                    onClick={handleFav}
+                    disabled={loading}
+                    title={localFav ? "Remove from favorites" : "Add to favorites"}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm shadow transition-all ${localFav ? "bg-teal text-white" : "bg-white/80 text-gray-500 hover:text-teal"}`}
+                  >
+                    <Bookmark className={`w-3.5 h-3.5 ${localFav ? "fill-current" : ""}`} />
+                  </button>
+                </>
+              )}
+            </div>
 
             {hasFile && (
               <div className="absolute bottom-3 right-3 bg-white/90 text-gray-700 text-xs px-2 py-1 rounded-full flex items-center gap-1">
@@ -180,12 +201,30 @@ export function ResourceCard({
             </div>
             <h3 className="font-semibold text-text-primary text-base line-clamp-2 mb-2 group-hover:text-teal transition-colors">{title}</h3>
             {description && <p className="text-sm text-gray-500 line-clamp-2 flex-1">{description}</p>}
+
+            <div className="mt-3 flex items-center justify-between text-[11px] text-gray-400">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <Heart className="w-3 h-3" /> {Math.max(0, likesCount)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <BookOpen className="w-3 h-3 text-gray-300" /> {viewsCount.toLocaleString()} views
+                </span>
+              </div>
+              {createdBy && (
+                <span className="flex items-center gap-1 truncate max-w-[150px]" title={`Created by ${createdBy.username}`}>
+                  <svg className="w-3 h-3 text-teal shrink-0" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4" /><path d="M20 21a8 8 0 1 0-16 0" /></svg>
+                  <span className="font-bold text-teal truncate text-[11px]">{createdBy.username}</span>
+                </span>
+              )}
+            </div>
+
             {totalRatings !== undefined && totalRatings > 0 && (
-              <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold">
+              <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold">
                 <div className="flex items-center gap-1 text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-md">
                   <Star className="w-3 h-3 fill-current" />{averageRating}
                 </div>
-                <span className="text-gray-400 font-normal">({totalRatings} {totalRatings === 1 ? "rating" : "ratings"})</span>
+                <span className="text-gray-400 font-normal">({totalRatings})</span>
               </div>
             )}
           </div>

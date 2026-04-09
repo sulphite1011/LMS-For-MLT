@@ -6,21 +6,22 @@ import Comment from "@/models/Comment";
 import User from "@/models/User";
 import mongoose from "mongoose";
 import { requireAdmin, getAuthUser } from "@/lib/auth";
+import { handleApiError, AppErrors } from "@/lib/api-errors";
 
 export async function GET(req: NextRequest) {
   try {
-    console.log("[API /resources] Starting GET...");
     await dbConnect();
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search");
     const type = searchParams.get("type");
     const subject = searchParams.get("subject");
+    const semester = searchParams.get("semester");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const isAdminDashboard = searchParams.get("admin") === "true";
 
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, any> = {};
 
     if (search) {
       filter.$or = [
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest) {
     }
     if (type) filter.resourceType = type;
     if (subject) filter.subjectId = subject;
+    if (semester) filter.semester = parseInt(semester);
 
     if (isAdminDashboard) {
       const currentUser = await getAuthUser();
@@ -42,7 +44,7 @@ export async function GET(req: NextRequest) {
       Resource.find(filter)
         .select("-fileData.fileContent -bannerImageData -files.fileContent")
         .populate("subjectId", "name")
-        .populate("createdBy", "clerkId")
+        .populate("createdBy", "username userHandle clerkId")
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -73,15 +75,12 @@ export async function GET(req: NextRequest) {
       { resources: resourcesWithRatings, total, pages: Math.ceil(total / limit), page },
       {
         headers: {
-          // Cache for 30s at the edge; serve stale for 60s while revalidating in the background.
-          // Authenticated/admin requests bypass this via Vercel's auth headers.
-          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+          "Cache-Control": "public, s-maxage=5, stale-while-revalidate=60",
         },
       }
     );
   } catch (error) {
-    console.error("GET /api/resources error:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -97,20 +96,14 @@ export async function POST(req: NextRequest) {
     const youtubeUrlsRaw = formData.get("youtubeUrls") as string;
     const bannerImageUrl = formData.get("bannerImageUrl") as string;
     const externalLinksRaw = formData.get("externalLinks") as string;
-    // Legacy single external link
+    const semester = parseInt(formData.get("semester") as string || "0");
     const legacyExternalLink = formData.get("externalLink") as string;
     const bannerFile = formData.get("bannerImage") as File | null;
-
-    // Multiple file uploads
     const files = formData.getAll("files") as File[];
-    // Legacy single file
     const legacyFile = formData.get("file") as File | null;
 
     if (!title || !subjectName || !resourceType) {
-      return NextResponse.json(
-        { error: "Title, subject, and resource type are required" },
-        { status: 400 }
-      );
+      throw AppErrors.BadRequest("Title, subject, and resource type are required");
     }
 
     const youtubeUrls = youtubeUrlsRaw ? JSON.parse(youtubeUrlsRaw).filter(Boolean) : [];
@@ -123,11 +116,12 @@ export async function POST(req: NextRequest) {
       { upsert: true, new: true }
     );
 
-    const resourceData: Record<string, unknown> = {
+    const resourceData: any = {
       title: title.trim(),
       subjectId: subject._id,
       resourceType,
       description: description?.trim() || "",
+      semester: semester > 0 ? semester : undefined,
       youtubeUrls,
       bannerImageUrl: bannerImageUrl || "",
       createdBy: user._id,
@@ -137,11 +131,9 @@ export async function POST(req: NextRequest) {
 
     if (bannerFile && bannerFile.size > 0) {
       const bannerBuffer = Buffer.from(await bannerFile.arrayBuffer());
-      const bannerBase64 = `data:${bannerFile.type};base64,${bannerBuffer.toString("base64")}`;
-      resourceData.bannerImageUrl = bannerBase64;
+      resourceData.bannerImageUrl = `data:${bannerFile.type};base64,${bannerBuffer.toString("base64")}`;
     }
 
-    // Handle multiple files
     const maxSize = parseInt(process.env.MAX_FILE_SIZE || "10485760");
     const processedFiles = [];
     const allFiles = files.length > 0 ? files : (legacyFile ? [legacyFile] : []);
@@ -149,7 +141,7 @@ export async function POST(req: NextRequest) {
     for (const file of allFiles) {
       if (!file || file.size === 0) continue;
       if (file.size > maxSize) {
-        return NextResponse.json({ error: `File "${file.name}" exceeds 10MB limit` }, { status: 400 });
+        throw AppErrors.BadRequest(`File "${file.name}" exceeds 10MB limit`);
       }
       const buffer = Buffer.from(await file.arrayBuffer());
       processedFiles.push({
@@ -162,41 +154,62 @@ export async function POST(req: NextRequest) {
     }
     resourceData.files = processedFiles;
 
-    // Handle external links
-    let parsedExternalLinks: { label: string; url: string; id?: string }[] = [];
+    if (processedFiles.length > 0) {
+      resourceData.fileData = processedFiles[0];
+    }
+
+    let parsedExternalLinks = [];
     if (externalLinksRaw) {
-      try {
-        parsedExternalLinks = JSON.parse(externalLinksRaw).filter((l: any) => l.url?.trim());
-      } catch (e) {
-        console.error("Failed to parse externalLinks json", e);
-      }
+      parsedExternalLinks = JSON.parse(externalLinksRaw).filter((l: any) => l.url?.trim());
     } else if (legacyExternalLink) {
       parsedExternalLinks = [{ label: "External Link", url: legacyExternalLink }];
     }
 
-    // Create new externalLinks objects omitting internal tracking IDs
-    resourceData.externalLinks = parsedExternalLinks.map(l => ({
+    resourceData.externalLinks = parsedExternalLinks.map((l: any) => ({
       label: l.label,
       url: l.url
     }));
 
-    // Legacy fileData for BC (use first file if present)
-    if (processedFiles.length > 0) {
-      resourceData.fileData = processedFiles[0];
-    } else if (parsedExternalLinks.length > 0) {
-      resourceData.fileData = { fileType: "external", externalLink: parsedExternalLinks[0].url };
-    }
-
     const resource = await Resource.create(resourceData);
+
+    // Notifications logic
+    if (resource.semester) {
+      try {
+        const { sendNotification } = await import("@/lib/notifications");
+        const sem = resource.semester;
+        let query: any = { clerkId: { $ne: user.clerkId } };
+
+        if (typeof sem === "number") {
+          query.$or = [
+            { "notificationPreferences.receiveAll": true },
+            { "notificationPreferences.subscribedSemesters": sem },
+            { primarySemester: sem }
+          ];
+        }
+
+        const usersToNotify = await User.find(query).select("clerkId");
+        if (usersToNotify.length > 0) {
+          const semLabel = typeof sem === "number" ? `Semester ${sem}` : String(sem);
+          await Promise.all(usersToNotify.map(u =>
+            sendNotification({
+              recipientId: u.clerkId,
+              type: "NEW_RESOURCE",
+              title: "New Resource Available",
+              message: `A new resource "${resource.title}" has been added to ${semLabel}.`,
+              link: `/resource/${resource._id}`
+            })
+          ));
+        }
+      } catch (notifyError) {
+        console.error("Failed to send resource notifications:", notifyError);
+      }
+    }
 
     return NextResponse.json(
       { _id: resource._id, title: resource.title },
       { status: 201 }
     );
-  } catch (error: unknown) {
-    console.error("POST /api/resources error:", error);
-    const message = error instanceof Error ? error.message : "Failed to create resource";
-    const status = message.includes("Unauthorized") ? 401 : message.includes("Forbidden") ? 403 : 500;
-    return NextResponse.json({ error: message }, { status });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
