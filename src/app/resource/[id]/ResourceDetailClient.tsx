@@ -26,8 +26,16 @@ import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
 // Dynamically import CommentSection — it's heavy and below the fold.
 // This reduces the initial JS bundle sent to the user.
 const CommentSection = dynamic(
-  () => import("@/components/comments/CommentSection").then(m => m.CommentSection),
-  { ssr: false, loading: () => <div className="h-32 rounded-2xl bg-gray-100 animate-pulse mt-8" /> }
+  () =>
+    import("@/components/comments/CommentSection").then(
+      (m) => m.CommentSection
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-32 rounded-2xl bg-gray-100 animate-pulse mt-8" />
+    ),
+  }
 );
 
 interface Subject {
@@ -56,7 +64,7 @@ interface Resource {
   bannerImageUrl?: string;
   subjectId: Subject;
   fileData?: FileEntry; // legacy single file
-  files?: FileEntry[];  // new multiple files
+  files?: FileEntry[]; // new multiple files
   externalLinks?: ExternalLink[]; // new multiple external links
   youtubeUrls: string[];
   createdAt: string;
@@ -80,6 +88,7 @@ export default function ResourceDetailClient({
 }: ResourceDetailClientProps) {
   const router = useRouter();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
+
   const [resource, setResource] = useState<Resource | null>(initialResource);
   const [related, setRelated] = useState<Resource[]>(initialRelated);
   const [loading, setLoading] = useState(!initialResource);
@@ -89,10 +98,15 @@ export default function ResourceDetailClient({
   // Fallback path: only runs when the server didn't hand us the resource.
   useEffect(() => {
     if (initialResource) return;
+
     const fetchResource = async () => {
       try {
         const res = await fetch(`/api/resources/${id}`);
-        if (!res.ok) throw new Error("Not found");
+
+        if (!res.ok) {
+          throw new Error("Not found");
+        }
+
         const data = await res.json();
         setResource(data);
 
@@ -101,7 +115,9 @@ export default function ResourceDetailClient({
           const relRes = await fetch(
             `/api/resources?subject=${data.subjectId._id}&limit=4`
           );
+
           const relData = await relRes.json();
+
           setRelated(
             (relData.resources || []).filter(
               (r: Resource) => r._id !== data._id
@@ -122,18 +138,30 @@ export default function ResourceDetailClient({
   // Signed-out visitors skip the request (it would only return 401).
   useEffect(() => {
     if (!userLoaded || !isSignedIn) return;
+
     let cancelled = false;
+
     fetch("/api/users/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (!cancelled && data) setCurrentUser(data); })
-      .catch((err) => console.error("Failed to fetch user profile:", err));
-    return () => { cancelled = true; };
+      .then((data) => {
+        if (!cancelled && data) {
+          setCurrentUser(data);
+        }
+      })
+      .catch((err) =>
+        console.error("Failed to fetch user profile:", err)
+      );
+
+    return () => {
+      cancelled = true;
+    };
   }, [userLoaded, isSignedIn]);
 
   if (loading) {
     return (
       <div className="min-h-screen">
         <Navbar />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <DetailSkeleton />
         </div>
@@ -145,14 +173,18 @@ export default function ResourceDetailClient({
     return (
       <div className="min-h-screen">
         <Navbar />
+
         <div className="flex flex-col items-center justify-center py-32">
           <FileText className="w-16 h-16 text-gray-300 mb-4" />
+
           <h2 className="text-xl font-semibold text-gray-700 mb-2">
             Resource Not Found
           </h2>
+
           <p className="text-gray-400 mb-6">
             The resource you are looking for does not exist.
           </p>
+
           <button
             onClick={() => router.push("/")}
             className="bg-teal text-white px-6 py-2.5 rounded-full font-medium hover:bg-teal-dark transition-colors"
@@ -165,10 +197,9 @@ export default function ResourceDetailClient({
     );
   }
 
-  const embedUrl =
-    resource.youtubeUrls?.[activeVideo]
-      ? getYoutubeEmbedUrl(resource.youtubeUrls[activeVideo])
-      : null;
+  const embedUrl = resource.youtubeUrls?.[activeVideo]
+    ? getYoutubeEmbedUrl(resource.youtubeUrls[activeVideo])
+    : null;
 
   return (
     <div className="min-h-screen">
@@ -190,7 +221,9 @@ export default function ResourceDetailClient({
             className="object-cover opacity-30"
           />
         )}
+
         <div className="absolute inset-0 bg-linear-to-t from-navy via-navy/60 to-transparent" />
+
         <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-10 max-w-7xl mx-auto">
           <motion.button
             initial={{ opacity: 0, x: -20 }}
@@ -201,24 +234,32 @@ export default function ResourceDetailClient({
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm">Back</span>
           </motion.button>
+
           <div className="flex items-center gap-3 mb-3">
             <span
               className={`${RESOURCE_TYPE_BG[resource.resourceType]} text-white text-xs font-medium px-3 py-1 rounded-full`}
             >
               {resource.resourceType}
             </span>
+
             <span className="text-gray-400 text-sm flex items-center gap-1.5 border-l border-white/20 pl-3">
               <BookOpen className="w-3.5 h-3.5" />
               {resource.subjectId?.name}
             </span>
+
             {resource.totalRatings && resource.totalRatings > 0 && (
               <span className="text-yellow-400 text-sm font-semibold flex items-center gap-1.5 border-l border-white/20 pl-3">
                 <Star className="w-4 h-4 fill-current" />
+
                 {resource.averageRating}
-                <span className="text-gray-400 font-normal">({resource.totalRatings})</span>
+
+                <span className="text-gray-400 font-normal">
+                  ({resource.totalRatings})
+                </span>
               </span>
             )}
           </div>
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -245,6 +286,7 @@ export default function ResourceDetailClient({
                 <h2 className="text-lg font-semibold text-text-primary mb-3">
                   Description
                 </h2>
+
                 <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
                   {resource.description}
                 </p>
@@ -257,6 +299,7 @@ export default function ResourceDetailClient({
                 <h2 className="text-lg font-semibold text-text-primary mb-4">
                   Video Content
                 </h2>
+
                 {!userLoaded ? (
                   <div className="aspect-video rounded-xl bg-gray-100 animate-pulse" />
                 ) : !isSignedIn ? (
@@ -269,14 +312,21 @@ export default function ResourceDetailClient({
                         className="object-cover opacity-20 blur-sm"
                       />
                     )}
+
                     <div className="relative z-10 flex flex-col items-center">
                       <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center mb-4 border border-white/10 group-hover:scale-110 transition-transform">
                         <Lock className="w-6 h-6 text-teal" />
                       </div>
-                      <h3 className="text-white font-semibold mb-2">Video content is locked</h3>
+
+                      <h3 className="text-white font-semibold mb-2">
+                        Video content is locked
+                      </h3>
+
                       <p className="text-slate-400 text-sm max-w-sm mb-6">
-                        Sign in to your account to watch this study material and access all features.
+                        Sign in to your account to watch this study material
+                        and access all features.
                       </p>
+
                       <SignInButton mode="modal">
                         <button className="bg-teal hover:bg-teal-dark text-white px-8 py-2.5 rounded-full font-semibold transition-all shadow-lg shadow-teal/20">
                           Sign In to Watch
@@ -297,16 +347,18 @@ export default function ResourceDetailClient({
                         />
                       </div>
                     )}
+
                     {resource.youtubeUrls.length > 1 && (
                       <div className="flex gap-2 overflow-x-auto hide-scrollbar">
                         {resource.youtubeUrls.map((url, i) => (
                           <button
                             key={i}
                             onClick={() => setActiveVideo(i)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${i === activeVideo
-                              ? "bg-teal text-white"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                              }`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                              i === activeVideo
+                                ? "bg-teal text-white"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            }`}
                             suppressHydrationWarning
                           >
                             <Play className="w-3.5 h-3.5" />
@@ -325,23 +377,30 @@ export default function ResourceDetailClient({
               <h2 className="text-lg font-semibold text-text-primary mb-3">
                 Details
               </h2>
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-400">Type</span>
+
                   <p className="font-medium text-gray-700">
                     {resource.resourceType}
                   </p>
                 </div>
+
                 <div>
                   <span className="text-gray-400">Subject</span>
+
                   <p className="font-medium text-gray-700">
                     {resource.subjectId?.name}
                   </p>
                 </div>
+
                 <div>
                   <span className="text-gray-400 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" /> Added
+                    <Calendar className="w-3.5 h-3.5" />
+                    Added
                   </span>
+
                   <p className="font-medium text-gray-700">
                     {new Date(resource.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
@@ -350,9 +409,11 @@ export default function ResourceDetailClient({
                     })}
                   </p>
                 </div>
+
                 {resource.fileData?.fileName && (
                   <div>
                     <span className="text-gray-400">File</span>
+
                     <p className="font-medium text-gray-700">
                       {resource.fileData.fileName}
                     </p>
@@ -365,16 +426,24 @@ export default function ResourceDetailClient({
           {/* Right - Actions */}
           <div className="space-y-4">
             {/* Multiple PDFs / Files */}
-            {((resource.files && resource.files.length > 0) || resource.fileData) && (
+            {((resource.files && resource.files.length > 0) ||
+              resource.fileData) && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h3 className="font-semibold text-text-primary mb-4">Access Material</h3>
+                <h3 className="font-semibold text-text-primary mb-4">
+                  Access Material
+                </h3>
+
                 {!userLoaded ? (
                   <div className="h-20 bg-gray-50 animate-pulse rounded-xl" />
                 ) : !isSignedIn ? (
                   <div className="space-y-4">
                     <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
                       <Lock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                      <p className="text-sm text-slate-500 mb-4">Study materials are restricted to members</p>
+
+                      <p className="text-sm text-slate-500 mb-4">
+                        Study materials are restricted to members
+                      </p>
+
                       <SignInButton mode="modal">
                         <button className="w-full bg-teal hover:bg-teal-dark text-white py-2.5 rounded-lg font-medium transition-all text-sm shadow-md shadow-teal/10">
                           Sign In to View PDF
@@ -388,7 +457,12 @@ export default function ResourceDetailClient({
                     {resource.files && resource.files.length > 0 ? (
                       resource.files.map((f, i) => (
                         <div key={i} className="space-y-2">
-                          {f.label && <p className="text-xs text-gray-500 font-medium">{f.label || f.fileName}</p>}
+                          {f.label && (
+                            <p className="text-xs text-gray-500 font-medium">
+                              {f.label || f.fileName}
+                            </p>
+                          )}
+
                           <a
                             href={`/api/resources/${resource._id}/file?index=${i}`}
                             target="_blank"
@@ -397,30 +471,58 @@ export default function ResourceDetailClient({
                             suppressHydrationWarning
                           >
                             <FileText className="w-4 h-4" />
-                            {f.fileName ? `View ${f.fileName}` : `View PDF ${resource.files!.length > 1 ? i + 1 : ""}`}
+
+                            {f.fileName
+                              ? `View ${f.fileName}`
+                              : `View PDF ${
+                                  resource.files!.length > 1 ? i + 1 : ""
+                                }`}
                           </a>
+
                           <a
                             href={`/api/resources/${resource._id}/file?index=${i}`}
                             download
                             className="flex items-center justify-center gap-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-medium transition-colors text-sm"
                           >
-                            <Download className="w-4 h-4" /> Download
+                            <Download className="w-4 h-4" />
+                            Download
                           </a>
                         </div>
                       ))
                     ) : resource.fileData ? (
                       /* Legacy single file */
-                      resource.fileData.fileType === "external" && resource.fileData.externalLink ? (
-                        <a href={resource.fileData.externalLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20" suppressHydrationWarning>
-                          <ExternalLink className="w-5 h-5" /> Open External Link
+                      resource.fileData.fileType === "external" &&
+                      resource.fileData.externalLink ? (
+                        <a
+                          href={resource.fileData.externalLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20"
+                          suppressHydrationWarning
+                        >
+                          <ExternalLink className="w-5 h-5" />
+                          Open External Link
                         </a>
                       ) : (
                         <div className="space-y-3">
-                          <a href={`/api/resources/${resource._id}/file`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20" suppressHydrationWarning>
-                            <FileText className="w-5 h-5" /> View PDF
+                          <a
+                            href={`/api/resources/${resource._id}/file`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3.5 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20"
+                            suppressHydrationWarning
+                          >
+                            <FileText className="w-5 h-5" />
+                            View PDF
                           </a>
-                          <a href={`/api/resources/${resource._id}/file`} download className="flex items-center justify-center gap-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium transition-colors">
-                            <Download className="w-4 h-4" /> Download
+
+                          <a
+                            href={`/api/resources/${resource._id}/file`}
+                            download
+                            className="flex items-center justify-center gap-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium transition-colors"
+                          >
+                            <Download className="w-4 h-4" />
+                            Download
                           </a>
                         </div>
                       )
@@ -431,19 +533,50 @@ export default function ResourceDetailClient({
             )}
 
             {/* External Links (non-YouTube) */}
-            {resource.externalLinks && resource.externalLinks.length > 0 && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h3 className="font-semibold text-text-primary mb-3">External Links</h3>
-                <div className="space-y-2">
-                  {resource.externalLinks.map((link, i) => (
-                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full bg-gray-50 hover:bg-teal/5 border border-gray-200 hover:border-teal/30 text-gray-700 hover:text-teal py-2.5 px-4 rounded-xl font-medium transition-all text-sm">
-                      <ExternalLink className="w-4 h-4 shrink-0" />
-                      <span className="flex-1 truncate">{link.label || "External Link"}</span>
-                    </a>
-                  ))}
+            {resource.externalLinks &&
+              resource.externalLinks.length > 0 && (
+                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                  <h3 className="font-semibold text-text-primary mb-3">
+                    External Links
+                  </h3>
+
+                  {!userLoaded ? (
+                    <div className="h-16 bg-gray-50 animate-pulse rounded-xl" />
+                  ) : !isSignedIn ? (
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
+                      <Lock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+
+                      <p className="text-sm text-slate-500 mb-4">
+                        Study materials are restricted to members
+                      </p>
+
+                      <SignInButton mode="modal">
+                        <button className="w-full bg-teal hover:bg-teal-dark text-white py-2.5 rounded-lg font-medium transition-all text-sm shadow-md shadow-teal/10">
+                          Sign In to View Material
+                        </button>
+                      </SignInButton>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {resource.externalLinks.map((link, i) => (
+                        <a
+                          key={i}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 w-full bg-gray-50 hover:bg-teal/5 border border-gray-200 hover:border-teal/30 text-gray-700 hover:text-teal py-2.5 px-4 rounded-xl font-medium transition-all text-sm"
+                        >
+                          <ExternalLink className="w-4 h-4 shrink-0" />
+
+                          <span className="flex-1 truncate">
+                            {link.label || "External Link"}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Quick links for videos */}
             {resource.youtubeUrls?.length > 0 && (
@@ -451,10 +584,13 @@ export default function ResourceDetailClient({
                 <h3 className="font-semibold text-text-primary mb-3">
                   Video Links
                 </h3>
+
                 {!userLoaded ? (
                   <div className="h-10 bg-gray-50 animate-pulse rounded-xl" />
                 ) : !isSignedIn ? (
-                  <p className="text-xs text-slate-400 italic">Sign in to access direct video links</p>
+                  <p className="text-xs text-slate-400 italic">
+                    Sign in to access direct video links
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {resource.youtubeUrls.map((url, i) => (
@@ -466,7 +602,9 @@ export default function ResourceDetailClient({
                         className="flex items-center gap-2 text-sm text-gray-600 hover:text-teal transition-colors py-1"
                       >
                         <Play className="w-3.5 h-3.5 shrink-0" />
+
                         <span className="truncate">Video {i + 1}</span>
+
                         <ExternalLink className="w-3 h-3 shrink-0 ml-auto" />
                       </a>
                     ))}
@@ -483,7 +621,10 @@ export default function ResourceDetailClient({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <CommentSection resourceId={resource._id} resourceAuthorId={resource.createdBy?.clerkId} />
+          <CommentSection
+            resourceId={resource._id}
+            resourceAuthorId={resource.createdBy?.clerkId}
+          />
         </motion.div>
 
         {/* Related Resources */}
@@ -497,6 +638,7 @@ export default function ResourceDetailClient({
             <h2 className="text-xl font-bold text-text-primary mb-6">
               Related Resources
             </h2>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {related.map((r) => (
                 <ResourceCard

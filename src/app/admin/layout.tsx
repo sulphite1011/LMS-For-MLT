@@ -5,6 +5,10 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+// Only these roles may use the admin area (the API routes enforce the same independently).
+const ADMIN_ROLES = ["admin", "superAdmin"];
 
 export default function AdminLayout({
   children,
@@ -12,6 +16,9 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { isLoaded, isSignedIn, userRole } = useAuthState();
+  const pathname = usePathname();
+  // /admin/claim is where a normal signed-in user enters the temporary admin credentials.
+  const isClaimPage = pathname === "/admin/claim" || pathname?.startsWith("/admin/claim/");
 
   if (!isLoaded) {
     return (
@@ -25,7 +32,12 @@ export default function AdminLayout({
     );
   }
 
-  if (!isSignedIn || !userRole) {
+  // Claim page: any signed-in user (no sidebar, no dashboard content). Signed-out users fall through to the sign-in prompt below.
+  if (isClaimPage && isSignedIn) {
+    return <>{children}</>;
+  }
+
+  if (!isSignedIn || !userRole || !ADMIN_ROLES.includes(userRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="text-center p-8">
@@ -39,12 +51,14 @@ export default function AdminLayout({
             You need to be signed in with admin privileges to access this area.
           </p>
           <div className="flex gap-3 justify-center">
-            <Link
-              href="/sign-in"
-              className="bg-[#14b8a6] text-white px-6 py-2.5 rounded-full font-medium hover:bg-[#0d9488] transition-colors"
-            >
-              Sign In
-            </Link>
+            {!isSignedIn && (
+              <Link
+                href="/sign-in"
+                className="bg-[#14b8a6] text-white px-6 py-2.5 rounded-full font-medium hover:bg-[#0d9488] transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
             <Link
               href="/"
               className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-full font-medium hover:bg-gray-200 transition-colors"
