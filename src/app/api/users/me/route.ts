@@ -10,9 +10,7 @@ const DEFAULT_AVATAR = "/images/default-avatar.png";
 
 export async function GET() {
   try {
-    console.log("[API /users/me] Starting GET...");
     const { userId } = await auth();
-    console.log("[API /users/me] userId:", userId);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -55,19 +53,15 @@ export async function PATCH(req: NextRequest) {
     if (username !== undefined) {
       const trimmed = username.trim();
 
-      console.log(`[API /users/me] Username update requested. Current: "${currentUser.username}", New: "${trimmed}"`);
 
       if (currentUser.username !== trimmed) {
-        console.log(`[API /users/me] Username change detected. Last changed: ${currentUser.usernameLastChanged}`);
 
         // Enforce 30-day rule only if changing to a NEW username
         if (currentUser.usernameLastChanged) {
           const daysSince = (Date.now() - new Date(currentUser.usernameLastChanged).getTime()) / (1000 * 60 * 60 * 24);
-          console.log(`[API /users/me] Days since last change: ${daysSince.toFixed(2)}`);
 
           if (daysSince < USERNAME_CHANGE_DAYS) {
             const daysLeft = Math.ceil(USERNAME_CHANGE_DAYS - daysSince);
-            console.log(`[API /users/me] REJECTED: ${daysLeft} days left.`);
             return NextResponse.json(
               { error: `Username already changed recently. You can change it again in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}.` },
               { status: 429 }
@@ -75,7 +69,6 @@ export async function PATCH(req: NextRequest) {
           }
         }
 
-        console.log("[API /users/me] Restriction passed. Validating...");
 
         if (!trimmed || trimmed.length < 2) {
           return NextResponse.json({ error: "Username must be at least 2 characters" }, { status: 400 });
@@ -89,7 +82,6 @@ export async function PATCH(req: NextRequest) {
         }
         updateData.username = trimmed;
         updateData.usernameLastChanged = new Date();
-        console.log("[API /users/me] Username update queued. New timestamp set.");
       }
     }
 

@@ -41,14 +41,22 @@ export default function HomeClient({
   const [subjects] = useState<Subject[]>(initialSubjects);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  // The input stays instant (`search`); the request only follows after typing pauses.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeType, setActiveType] = useState<string | null>(null);
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
+
+  // Wait for a short pause in typing before searching. Clearing the box applies right away (0ms).
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), search === "" ? 0 : 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchResources = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (search) params.set("search", search);
+      if (debouncedSearch) params.set("search", debouncedSearch);
       if (activeType) params.set("type", activeType);
       if (activeSubject) params.set("subject", activeSubject);
 
@@ -60,13 +68,13 @@ export default function HomeClient({
     } finally {
       setLoading(false);
     }
-  }, [search, activeType, activeSubject]);
+  }, [debouncedSearch, activeType, activeSubject]);
 
   // Only re-fetch when filters change (not on mount — we have initial data)
   useEffect(() => {
-    if (!search && !activeType && !activeSubject) return;
+    if (!debouncedSearch && !activeType && !activeSubject) return;
     fetchResources();
-  }, [fetchResources, search, activeType, activeSubject]);
+  }, [fetchResources, debouncedSearch, activeType, activeSubject]);
 
   return (
     <>

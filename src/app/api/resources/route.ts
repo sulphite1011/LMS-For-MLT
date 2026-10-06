@@ -6,10 +6,11 @@ import Comment from "@/models/Comment";
 import User from "@/models/User";
 import mongoose from "mongoose";
 import { requireAdmin, getAuthUser } from "@/lib/auth";
+import { getBannerUrlMap, applyBannerUrls } from "@/lib/banner";
+import { revalidatePath } from "next/cache";
 
 export async function GET(req: NextRequest) {
   try {
-    console.log("[API /resources] Starting GET...");
     await dbConnect();
 
     const { searchParams } = new URL(req.url);
@@ -23,9 +24,11 @@ export async function GET(req: NextRequest) {
     const filter: Record<string, unknown> = {};
 
     if (search) {
+      // Escape user input so it is matched literally (and can't be abused as a regex).
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
+        { title: { $regex: escapedSearch, $options: "i" } },
+        { description: { $regex: escapedSearch, $options: "i" } },
       ];
     }
     if (type) filter.resourceType = type;
@@ -40,7 +43,8 @@ export async function GET(req: NextRequest) {
 
     const [resources, total] = await Promise.all([
       Resource.find(filter)
-        .select("-fileData.fileContent -bannerImageData -files.fileContent")
+        // bannerImageUrl may hold a large base64 data URI; it is replaced by a small URL below.
+        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl")
         .populate("subjectId", "name")
         .populate("createdBy", "clerkId")
         .sort({ createdAt: -1 })
@@ -55,10 +59,14 @@ export async function GET(req: NextRequest) {
     }
 
     const resourceIds = resources.map(r => new mongoose.Types.ObjectId(String(r._id)));
-    const ratingStats = await Comment.aggregate([
-      { $match: { resourceId: { $in: resourceIds }, rating: { $exists: true, $gt: 0 } } },
-      { $group: { _id: "$resourceId", averageRating: { $avg: "$rating" }, totalRatings: { $sum: 1 } } }
+    const [ratingStats, bannerUrls] = await Promise.all([
+      Comment.aggregate([
+        { $match: { resourceId: { $in: resourceIds }, rating: { $exists: true, $gt: 0 } } },
+        { $group: { _id: "$resourceId", averageRating: { $avg: "$rating" }, totalRatings: { $sum: 1 } } }
+      ]),
+      getBannerUrlMap(resourceIds),
     ]);
+    applyBannerUrls(resources, bannerUrls);
 
     const resourcesWithRatings = resources.map(resource => {
       const stats = ratingStats.find(s => String(s._id) === String(resource._id));
@@ -73,9 +81,12 @@ export async function GET(req: NextRequest) {
       { resources: resourcesWithRatings, total, pages: Math.ceil(total / limit), page },
       {
         headers: {
-          // Cache for 30s at the edge; serve stale for 60s while revalidating in the background.
-          // Authenticated/admin requests bypass this via Vercel's auth headers.
-          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+          // Public listing: cache for 30s at the edge; serve stale for 60s while revalidating.
+          // The admin view (?admin=true) is filtered per signed-in user (admins only see their own
+          // resources), so it must never be stored in a shared cache.
+          "Cache-Control": isAdminDashboard
+            ? "private, no-store"
+            : "public, s-maxage=30, stale-while-revalidate=60",
         },
       }
     );
@@ -188,6 +199,9 @@ export async function POST(req: NextRequest) {
     }
 
     const resource = await Resource.create(resourceData);
+
+    // Make the new resource show up on the (cached) homepage right away.
+    revalidatePath("/");
 
     return NextResponse.json(
       { _id: resource._id, title: resource.title },

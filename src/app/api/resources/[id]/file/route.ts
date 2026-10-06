@@ -12,6 +12,23 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const index = searchParams.get("index");
 
+    // Cheap pre-check: a validator based on the resource's updatedAt (any edit changes it), so repeat
+    // downloads/previews can be answered with 304 without loading the file out of MongoDB.
+    const meta = await Resource.findById(id).select("updatedAt").lean();
+    if (!meta) {
+      return NextResponse.json({ error: "Resource not found" }, { status: 404 });
+    }
+    const cacheHeaders: Record<string, string> = {};
+    if (meta.updatedAt) {
+      const etag = `W/"${new Date(meta.updatedAt).getTime()}-${index ?? "default"}"`;
+      cacheHeaders["ETag"] = etag;
+      // Browsers always revalidate (cheap, via the ETag); the CDN may reuse a copy briefly.
+      cacheHeaders["Cache-Control"] = "public, max-age=0, must-revalidate, s-maxage=60, stale-while-revalidate=300";
+      if (req.headers.get("if-none-match") === etag) {
+        return new NextResponse(null, { status: 304, headers: cacheHeaders });
+      }
+    }
+
     const resource = await Resource.findById(id).select(
       "fileData.fileContent fileData.fileName fileData.mimeType fileData.fileType files"
     );
@@ -33,6 +50,7 @@ export async function GET(
 
       return new NextResponse(new Uint8Array(buffer as any), {
         headers: {
+          ...cacheHeaders,
           "Content-Type": mimeType,
           "Content-Disposition": `inline; filename="${fileName}"`,
           "Content-Length": (buffer as any).length.toString(),
@@ -51,6 +69,7 @@ export async function GET(
 
     return new NextResponse(new Uint8Array(buffer as any), {
       headers: {
+        ...cacheHeaders,
         "Content-Type": mimeType,
         "Content-Disposition": `inline; filename="${fileName}"`,
         "Content-Length": (buffer as any).length.toString(),

@@ -2,12 +2,23 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import dbConnect from "./db";
 import User from "@/models/User";
 
-export async function getAuthUser() {
+// Fields every caller of getAuthUser() actually reads (identity + role checks + comment author info).
+// Notably excluded: `password` (hash) and the large base64 `customAvatar`.
+const AUTH_USER_FIELDS = "_id clerkId username userHandle userImage role";
+
+/**
+ * Returns the signed-in user's MongoDB record as a plain (lean) object, or null.
+ * Pass `{ includeAvatar: true }` only when the caller needs `customAvatar`
+ * (e.g. to stamp the author's avatar on a new comment/rating).
+ */
+export async function getAuthUser(options?: { includeAvatar?: boolean }) {
   const { userId } = await auth();
   if (!userId) return null;
 
   await dbConnect();
-  const user = await User.findOne({ clerkId: userId });
+  const user = await User.findOne({ clerkId: userId })
+    .select(options?.includeAvatar ? `${AUTH_USER_FIELDS} customAvatar` : AUTH_USER_FIELDS)
+    .lean();
   return user as any; // Cast as IUserDoc for role check
 }
 
@@ -45,14 +56,12 @@ export async function syncUser() {
   const emails = clerkUser.emailAddresses.map(e => e.emailAddress.toLowerCase());
   const isHamad = emails.includes("hamadkhadimdgkmc@gmail.com");
 
-  console.log(`[Lib Sync] Syncing user ${userId}. Emails: ${emails.join(", ")}. Is Super Admin: ${isHamad}`);
 
   try {
     await dbConnect();
 
     let user = await User.findOne({ clerkId: userId });
     if (!user) {
-      console.log(`[Lib Sync] User not found. Creating...`);
       try {
         user = await User.create({
           clerkId: userId,
@@ -62,7 +71,6 @@ export async function syncUser() {
         });
       } catch (createError: any) {
         if (createError.code === 11000) {
-          console.log(`[Lib Sync] Username collision. Retrying with suffix...`);
           user = await User.create({
             clerkId: userId,
             username: `${clerkUser.username || clerkUser.firstName || "user"}_${userId.slice(-5)}`,
@@ -73,15 +81,12 @@ export async function syncUser() {
           throw createError;
         }
       }
-      console.log(`[Lib Sync] Created user: ${user.username} with role: ${user.role}`);
     } else {
-      console.log(`[Lib Sync] User exists: ${user.username}, Role: ${user.role}`);
       if (user.userImage !== clerkUser.imageUrl) {
         user.userImage = clerkUser.imageUrl;
         await user.save();
       }
       if (isHamad && user.role !== "superAdmin") {
-        console.log(`[Lib Sync] Forcing superAdmin role for Hamad`);
         user.role = "superAdmin";
         await user.save();
       }

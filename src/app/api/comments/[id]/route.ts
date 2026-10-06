@@ -10,7 +10,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const user = await getAuthUser();
+    const user = await getAuthUser({ includeAvatar: true });
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

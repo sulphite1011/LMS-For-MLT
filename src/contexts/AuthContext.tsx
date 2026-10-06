@@ -28,6 +28,13 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn, user } = useUser();
+  // Depend on these primitives rather than the Clerk `user` object: the object's identity can change
+  // (e.g. on session/token refresh) without any real change, which would re-run the sync request.
+  // Username/image changes still trigger a re-sync, exactly as before.
+  const clerkId = user?.id;
+  const clerkUsername = user?.username;
+  const clerkHasImage = user?.hasImage;
+  const clerkImageUrl = user?.imageUrl;
   const [authState, setAuthState] = useState<AuthState>({
     isLoaded: false,
     isSignedIn: false,
@@ -54,11 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const syncUser = async () => {
       try {
-        console.log("[AuthContext] Initiating sync...");
         const res = await fetch("/api/auth/sync", { method: "POST" });
         if (res.ok) {
           const data = await res.json();
-          console.log("[AuthContext] Sync successful:", data);
           setAuthState({
             isLoaded: true,
             isSignedIn: true,
@@ -78,15 +83,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isLoaded: true,
           isSignedIn: true,
           userRole: null,
-          username: user?.username || null,
-          userImage: user?.hasImage ? user.imageUrl : "/images/default-avatar.png",
+          username: clerkUsername || null,
+          userImage: clerkHasImage && clerkImageUrl ? clerkImageUrl : "/images/default-avatar.png",
           dbUserId: null,
         });
       }
     };
 
     syncUser();
-  }, [isLoaded, isSignedIn, user]);
+  }, [isLoaded, isSignedIn, clerkId, clerkUsername, clerkHasImage, clerkImageUrl]);
 
   const updateUser = (data: { username?: string; userImage?: string; userRole?: any }) => {
     setAuthState(prev => ({
