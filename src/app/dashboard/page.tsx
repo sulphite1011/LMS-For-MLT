@@ -10,6 +10,7 @@ import {
   Camera, Loader2, BookOpen, Star, ChevronRight, ExternalLink,
   FileText, Play, Award, Activity
 } from "lucide-react";
+import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
 import { useAuthState } from "@/contexts/AuthContext";
@@ -396,6 +397,28 @@ export default function DashboardPage() {
                 <h3 className="font-semibold text-teal text-sm mb-2">How to edit your profile</h3>
                 <p className="text-slate-600 text-sm">Click the <strong className="text-slate-800">Edit Profile</strong> button at the top to update your username, bio, and profile picture.</p>
               </div>
+
+              {/* Admin access — only for regular users (role is read from the database via /api/users/me) */}
+              {profile?.role === "user" && (
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                  <h3 className="font-semibold text-slate-900 mb-2 text-lg">Admin Access</h3>
+                  <p className="text-slate-600 text-sm mb-4">Need to help manage resources? Request admin access, or claim it if you already received temporary credentials.</p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <a
+                      href="mailto:hamadkhadimdgkmc@gmail.com?subject=Admin%20Access%20Request%20-%20Hamad%27s%20LMS"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all text-sm font-medium"
+                    >
+                      Request Admin Access
+                    </a>
+                    <Link
+                      href="/admin/claim"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-teal text-white rounded-xl hover:bg-teal-dark transition-all text-sm font-medium"
+                    >
+                      Claim Admin Role
+                    </Link>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
