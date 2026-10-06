@@ -1,0 +1,14 @@
+* [33md355f07[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m fix: restore protected access and loading UI
+* [33m485fff4[m perf: phases 1-4 performance work (snapshot before access/loading fixes)
+[31m|[m * [33m09c99da[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m version3.0.0 claude update
+[31m|[m[31m/[m  
+*   [33m94b5857[m Merge pull request #1 from sulphite1011/main
+[33m|[m[34m\[m  
+[33m|[m [34m|[m * [33mf84bd72[m[33m ([m[1;31morigin/dev[m[33m)[m web laging
+[33m|[m [34m|[m * [33md14551d[m[33m ([m[1;31morigin/main[m[33m)[m share
+[33m|[m [34m|[m * [33mb746073[m Finished the share button
+[33m|[m [34m|[m * [33m892110e[m added share course button
+[33m|[m [34m|[m * [33md596a7e[m System: Add heartbeat API to prevent DB pause
+[33m|[m [34m|[m * [33meb87e3c[m UI: Add Sandbox Mode indicator for dev environment
+[33m|[m [34m|[m * [33ma88182f[m Refactor: Move middleware.ts to proxy.ts (Next.js 16 convention)
+[33m|[m [34m|[m * [33md74ef0d[m Fix: Mongoose middleware TypeScript errors for build
