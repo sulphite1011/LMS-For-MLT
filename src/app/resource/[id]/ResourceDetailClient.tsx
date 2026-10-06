@@ -431,6 +431,7 @@ export default function ResourceDetailClient({
             )}
 
             {/* External Links (non-YouTube) */}
+<<<<<<< HEAD
             {resource.externalLinks && resource.externalLinks.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <h3 className="font-semibold text-text-primary mb-3">External Links</h3>
@@ -470,6 +471,47 @@ export default function ResourceDetailClient({
                 )}
               </div>
             )}
+=======
+{resource.externalLinks && resource.externalLinks.length > 0 && (
+  <div className="bg-white rounded-2xl p-6 shadow-sm">
+    <h3 className="font-semibold text-text-primary mb-3">External Links</h3>
+
+    {!userLoaded ? (
+      <div className="h-16 bg-gray-50 animate-pulse rounded-xl" />
+    ) : !isSignedIn ? (
+      <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
+        <Lock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+        <p className="text-sm text-slate-500 mb-4">
+          Study materials are restricted to members
+        </p>
+
+        <SignInButton mode="modal">
+          <button className="w-full bg-teal hover:bg-teal-dark text-white py-2.5 rounded-lg font-medium transition-all text-sm shadow-md shadow-teal/10">
+            Sign In to View Material
+          </button>
+        </SignInButton>
+      </div>
+    ) : (
+      <div className="space-y-2">
+        {resource.externalLinks.map((link, i) => (
+          <a
+            key={i}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 w-full bg-gray-50 hover:bg-teal/5 border border-gray-200 hover:border-teal/30 text-gray-700 hover:text-teal py-2.5 px-4 rounded-xl font-medium transition-all text-sm"
+          >
+            <ExternalLink className="w-4 h-4 shrink-0" />
+            <span className="flex-1 truncate">
+              {link.label || "External Link"}
+            </span>
+          </a>
+        ))}
+      </div>
+    )}
+  </div>
+)}
+>>>>>>> origin/master
 
             {/* Quick links for videos */}
             {resource.youtubeUrls?.length > 0 && (
