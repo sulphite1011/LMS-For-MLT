@@ -2,24 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
 import Subject from "@/models/Subject";
-import Comment from "@/models/Comment";
-import User from "@/models/User";
-import mongoose from "mongoose";
 import { requireAdmin } from "@/lib/auth";
+import { getBannerUrlMap, isOwnBannerRoute } from "@/lib/banner";
+import { fetchResourceDetail } from "@/lib/resources";
+import { revalidatePath } from "next/cache";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await dbConnect();
     const { id } = await params;
 
-    const resource = await Resource.findById(id)
-      .select("-fileData.fileContent -bannerImageData -files.fileContent")
-      .populate("subjectId", "name")
-      .populate("createdBy", "clerkId")
-      .lean();
+    const resource = await fetchResourceDetail(id);
 
     if (!resource) {
       return NextResponse.json(
@@ -28,18 +23,8 @@ export async function GET(
       );
     }
 
-    // Fetch rating stats with robust ObjectId matching
-    const ratedComments = await Comment.find({
-      resourceId: new mongoose.Types.ObjectId(id),
-      rating: { $exists: true }
-    });
-    const totalRatings = ratedComments.length;
-    const averageRating = totalRatings > 0
-      ? (ratedComments.reduce((acc, c) => acc + (c.rating || 0), 0) / totalRatings).toFixed(1)
-      : 0;
-
     return NextResponse.json(
-      { ...resource, averageRating: Number(averageRating), totalRatings },
+      resource,
       {
         headers: {
           // Cache individual resource for 60s; serve stale for 2min while revalidating
@@ -104,7 +89,9 @@ export async function PUT(
       youtubeUrls,
     };
 
-    if (bannerImageUrl !== undefined) {
+    // The edit form echoes back the banner URL it received from GET. For uploaded banners that is
+    // this app's own /banner route, which must never overwrite the stored image data.
+    if (bannerImageUrl !== undefined && !isOwnBannerRoute(bannerImageUrl, id)) {
       updateData.bannerImageUrl = bannerImageUrl;
     }
 
@@ -142,7 +129,7 @@ export async function PUT(
     const resource = await Resource.findByIdAndUpdate(id, updateData, {
       new: true,
     })
-      .select("-fileData.fileContent -bannerImageData")
+      .select("-fileData.fileContent -bannerImageData -bannerImageUrl")
       .populate("subjectId", "name");
 
     if (!resource) {
@@ -152,7 +139,14 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json(resource);
+    const bannerUrls = await getBannerUrlMap([id]);
+    revalidatePath("/");
+    revalidatePath(`/resource/${id}`);
+
+    return NextResponse.json({
+      ...resource.toJSON(),
+      bannerImageUrl: bannerUrls.get(String(resource._id)) ?? "",
+    });
   } catch (error: unknown) {
     console.error("PUT /api/resources/[id] error:", error);
     const message =
@@ -183,6 +177,9 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    revalidatePath("/");
+    revalidatePath(`/resource/${id}`);
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

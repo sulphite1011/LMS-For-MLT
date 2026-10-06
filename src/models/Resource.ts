@@ -87,6 +87,9 @@ const ResourceSchema = new Schema<IResourceDoc>(
 );
 
 ResourceSchema.index({ title: "text", description: "text" });
+// Unfiltered "newest first" listing (homepage + /api/resources default) — the compound indexes
+// below all lead with another field, so they can't serve a plain createdAt sort.
+ResourceSchema.index({ createdAt: -1 });
 // Composite indexes for filtered + sorted queries (e.g. ?subject=X&sort=newest)
 ResourceSchema.index({ subjectId: 1, createdAt: -1 });
 ResourceSchema.index({ resourceType: 1, createdAt: -1 });

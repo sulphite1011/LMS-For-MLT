@@ -4,6 +4,7 @@ import User from "@/models/User";
 import Resource from "@/models/Resource";
 import mongoose from "mongoose";
 import { getAuthUser } from "@/lib/auth";
+import { getBannerUrlMap, applyBannerUrls } from "@/lib/banner";
 
 /**
  * GET /api/users/me/favorites
@@ -22,14 +23,19 @@ export async function GET() {
 
     const [favorites, liked] = await Promise.all([
       Resource.find({ _id: { $in: user.favoriteResources } })
-        .select("-fileData.fileContent -bannerImageData -files.fileContent")
+        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl")
         .populate("subjectId", "name")
         .lean(),
       Resource.find({ _id: { $in: user.likedResources } })
-        .select("-fileData.fileContent -bannerImageData -files.fileContent")
+        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl")
         .populate("subjectId", "name")
         .lean(),
     ]);
+
+    // Swap base64 banners for small cacheable URLs (one lightweight query for both lists).
+    const bannerUrls = await getBannerUrlMap([...favorites, ...liked].map((r) => r._id as unknown as string));
+    applyBannerUrls(favorites, bannerUrls);
+    applyBannerUrls(liked, bannerUrls);
 
     return NextResponse.json({ favorites, liked });
   } catch (error) {

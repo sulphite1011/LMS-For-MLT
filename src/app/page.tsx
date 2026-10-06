@@ -1,7 +1,7 @@
-// This page renders on every request (dynamic) because it queries MongoDB directly.
-// This is scoped to just this page — other pages are NOT affected.
-// On Vercel, responses are still cached at the CDN edge for 30s via Cache-Control headers.
-export const dynamic = "force-dynamic";
+// This page is statically generated and revalidated in the background (ISR, see `revalidate`
+// below). It contains no per-user data (signed-in state is handled by client components),
+// so it is safe to cache. Admin create/update/delete handlers call revalidatePath("/") so
+// changes appear immediately instead of waiting for the revalidation window.
 
 // No "use client" — this is a Server Component.
 // It fetches initial data server-side so the page renders with content immediately,
@@ -15,6 +15,7 @@ import Subject from "@/models/Subject";
 import Comment from "@/models/Comment";
 import User from "@/models/User"; // Required for .populate("createdBy")
 import mongoose from "mongoose";
+import { getBannerUrlMap, applyBannerUrls } from "@/lib/banner";
 
 const BASE_URL = "https://lms-for-mlt.vercel.app";
 
@@ -25,7 +26,8 @@ async function getInitialData() {
 
     const [resources, subjects] = await Promise.all([
       Resource.find({})
-        .select("-fileData.fileContent -bannerImageData -files.fileContent")
+        // bannerImageUrl may hold a large base64 data URI; it is replaced by a small URL below.
+        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl")
         .populate("subjectId", "name")
         .populate("createdBy", "clerkId")
         .sort({ createdAt: -1 })
@@ -36,10 +38,14 @@ async function getInitialData() {
 
     // Batch rating aggregation (same as API)
     const resourceIds = resources.map((r) => new mongoose.Types.ObjectId(String(r._id)));
-    const ratingStats = await Comment.aggregate([
-      { $match: { resourceId: { $in: resourceIds }, rating: { $exists: true, $gt: 0 } } },
-      { $group: { _id: "$resourceId", averageRating: { $avg: "$rating" }, totalRatings: { $sum: 1 } } },
+    const [ratingStats, bannerUrls] = await Promise.all([
+      Comment.aggregate([
+        { $match: { resourceId: { $in: resourceIds }, rating: { $exists: true, $gt: 0 } } },
+        { $group: { _id: "$resourceId", averageRating: { $avg: "$rating" }, totalRatings: { $sum: 1 } } },
+      ]),
+      getBannerUrlMap(resourceIds),
     ]);
+    applyBannerUrls(resources, bannerUrls);
 
     const resourcesWithRatings = resources.map((resource) => {
       const stats = ratingStats.find((s) => String(s._id) === String(resource._id));
@@ -57,6 +63,10 @@ async function getInitialData() {
     };
   } catch (error) {
     console.error("[Homepage] Failed to fetch initial data:", error);
+    // At runtime, rethrow so a failed background regeneration keeps serving the last good page
+    // instead of caching an empty list. During `next build` we fall back to empty so the build
+    // doesn't fail when the database isn't reachable; the first revalidation fills it in.
+    if (process.env.NEXT_PHASE !== "phase-production-build") throw error;
     return { resources: [], subjects: [] };
   }
 }

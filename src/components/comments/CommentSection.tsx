@@ -33,6 +33,10 @@ export function CommentSection({ resourceId, resourceAuthorId }: { resourceId: s
   const { userImage: authImage } = useAuthState();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
+  // Pagination: first page is loaded up front, "Load more comments" fetches the next one.
+  const [totalComments, setTotalComments] = useState<number | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,14 +51,53 @@ export function CommentSection({ resourceId, resourceAuthorId }: { resourceId: s
     fetchRatingStats();
   }, [resourceId]);
 
+  const COMMENTS_PAGE_SIZE = 20;
+
   const fetchComments = async () => {
     try {
-      const res = await fetch(`/api/resources/${resourceId}/comments`);
-      if (res.ok) setComments(await res.json());
+      const res = await fetch(`/api/resources/${resourceId}/comments?limit=${COMMENTS_PAGE_SIZE}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          // Un-paginated response (full list) — handle exactly as before.
+          setComments(data);
+          setNextCursor(null);
+          setTotalComments(null);
+        } else {
+          setComments(data.comments || []);
+          setNextCursor(data.hasMore ? data.nextCursor : null);
+          setTotalComments(typeof data.total === "number" ? data.total : null);
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch comments", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreComments = async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(
+        `/api/resources/${resourceId}/comments?limit=${COMMENTS_PAGE_SIZE}&before=${encodeURIComponent(nextCursor)}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        // Append, skipping anything already shown (e.g. a comment this user just posted).
+        setComments(prev => {
+          const seen = new Set(prev.map(c => c._id));
+          return [...prev, ...(data.comments || []).filter((c: Comment) => !seen.has(c._id))];
+        });
+        setNextCursor(data.hasMore ? data.nextCursor : null);
+      } else {
+        toast.error("Failed to load more comments");
+      }
+    } catch {
+      toast.error("Failed to load more comments");
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -105,6 +148,7 @@ export function CommentSection({ resourceId, resourceAuthorId }: { resourceId: s
       if (res.ok) {
         const newComment = await res.json();
         setComments([newComment, ...comments]);
+        setTotalComments(t => (t === null ? t : t + 1));
         setContent("");
         toast.success("Comment posted!");
       } else {
@@ -151,6 +195,7 @@ export function CommentSection({ resourceId, resourceAuthorId }: { resourceId: s
           toast.success("Reply deleted");
         } else {
           setComments(comments.filter(c => c._id !== commentId));
+          setTotalComments(t => (t === null ? t : Math.max(0, t - 1)));
           toast.success("Comment deleted");
         }
       } else {
@@ -180,6 +225,8 @@ export function CommentSection({ resourceId, resourceAuthorId }: { resourceId: s
   };
 
   const displayRating = hoverRating || (ratingStats?.userRating ?? 0);
+  // Server-provided total when paginated (the list only holds the pages loaded so far).
+  const commentCount = totalComments ?? comments.filter(c => c.content).length;
 
   return (
     <div className="mt-12 space-y-8">
@@ -189,7 +236,7 @@ export function CommentSection({ resourceId, resourceAuthorId }: { resourceId: s
             <MessageSquare className="w-6 h-6 text-teal" /> Discussion
           </h2>
           <p className="text-slate-500 text-sm mt-1">
-            {comments.filter(c => c.content).length} {comments.filter(c => c.content).length === 1 ? "comment" : "comments"} on this resource
+            {commentCount} {commentCount === 1 ? "comment" : "comments"} on this resource
           </p>
         </div>
 
@@ -324,6 +371,18 @@ export function CommentSection({ resourceId, resourceAuthorId }: { resourceId: s
                 />
               ))}
             </AnimatePresence>
+            {nextCursor && (
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={loadMoreComments}
+                  disabled={loadingMore}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl border border-teal text-teal font-semibold hover:bg-teal hover:text-white disabled:opacity-50 transition-colors"
+                >
+                  {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Load more comments
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

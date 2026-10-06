@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -63,15 +64,30 @@ interface Resource {
   totalRatings?: number;
 }
 
-export default function ResourceDetailClient({ id }: { id: string }) {
+interface ResourceDetailClientProps {
+  id: string;
+  // Provided by the server component. When missing (not found / server read failed) the
+  // component falls back to fetching everything from the API, exactly as before.
+  initialResource?: Resource | null;
+  initialRelated?: Resource[];
+}
+
+export default function ResourceDetailClient({
+  id,
+  initialResource = null,
+  initialRelated = [],
+}: ResourceDetailClientProps) {
   const router = useRouter();
-  const [resource, setResource] = useState<Resource | null>(null);
-  const [related, setRelated] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
+  const [resource, setResource] = useState<Resource | null>(initialResource);
+  const [related, setRelated] = useState<Resource[]>(initialRelated);
+  const [loading, setLoading] = useState(!initialResource);
   const [activeVideo, setActiveVideo] = useState(0);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
+  // Fallback path: only runs when the server didn't hand us the resource.
   useEffect(() => {
+    if (initialResource) return;
     const fetchResource = async () => {
       try {
         const res = await fetch(`/api/resources/${id}`);
@@ -91,10 +107,6 @@ export default function ResourceDetailClient({ id }: { id: string }) {
             )
           );
         }
-
-        // Fetch user profile for favorites/likes
-        const userRes = await fetch("/api/users/me");
-        if (userRes.ok) setCurrentUser(await userRes.json());
       } catch (err) {
         console.error("Failed to fetch resource:", err);
       } finally {
@@ -103,7 +115,19 @@ export default function ResourceDetailClient({ id }: { id: string }) {
     };
 
     fetchResource();
-  }, [id]);
+  }, [id, initialResource]);
+
+  // User profile (favorites/likes) loads in parallel and no longer blocks the page.
+  // Signed-out visitors skip the request (it would only return 401).
+  useEffect(() => {
+    if (!userLoaded || !isSignedIn) return;
+    let cancelled = false;
+    fetch("/api/users/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled && data) setCurrentUser(data); })
+      .catch((err) => console.error("Failed to fetch user profile:", err));
+    return () => { cancelled = true; };
+  }, [userLoaded, isSignedIn]);
 
   if (loading) {
     return (
@@ -422,7 +446,8 @@ export default function ResourceDetailClient({ id }: { id: string }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {related.map((r) => (
                 <ResourceCard
-                  key={r._id}
+                  // ResourceCard reads isFavorite/isLiked only on mount, so remount once the profile arrives.
+                  key={`${r._id}${currentUser ? "-u" : ""}`}
                   _id={r._id}
                   title={r.title}
                   description={r.description}

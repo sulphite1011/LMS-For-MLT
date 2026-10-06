@@ -49,7 +49,6 @@ export function ResourceCard({
     e.preventDefault();
     e.stopPropagation();
     if (!user) { toast.error("Sign in to save favorites"); return; }
-    console.log("[ResourceCard] handleFav called. Current state:", localFav);
     setLocalFav(prev => !prev);
     setLoading(true);
     try {
@@ -80,7 +79,6 @@ export function ResourceCard({
     e.preventDefault();
     e.stopPropagation();
     if (!user) { toast.error("Sign in to like resources"); return; }
-    console.log("[ResourceCard] handleLike called. Current state:", localLike);
     setLocalLike(prev => !prev);
     setLoading(true);
     try {

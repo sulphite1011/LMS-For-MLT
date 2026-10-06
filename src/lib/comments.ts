@@ -1,4 +1,20 @@
+import { createHash } from "crypto";
 import User from "@/models/User";
+
+/**
+ * Same result as `customAvatar || userImage`, except an uploaded base64 avatar is replaced by a short
+ * URL to /api/avatars/[clerkId] (cacheable, and not repeated in every comment of the same user).
+ */
+function resolveAvatar(u: { clerkId: string; customAvatar?: string; userImage?: string }) {
+  if (u.customAvatar) {
+    if (/^data:/i.test(u.customAvatar)) {
+      const version = createHash("sha1").update(u.customAvatar).digest("hex").slice(0, 12);
+      return `/api/avatars/${encodeURIComponent(u.clerkId)}?v=${version}`;
+    }
+    return u.customAvatar;
+  }
+  return u.userImage;
+}
 
 /**
  * Merges the latest user profile data (username, customAvatar, userImage) 
@@ -28,13 +44,13 @@ export async function mergeCommentUserInfo(comments: any[]) {
     return {
       ...c,
       userName: u ? u.username : c.userName,
-      userImage: u ? (u.customAvatar || u.userImage) : (c.userImage || "/images/default-avatar.png"),
+      userImage: u ? resolveAvatar(u) : (c.userImage || "/images/default-avatar.png"),
       replies: c.replies?.map((r: any) => {
         const ru = userMap.get(String(r.userId));
         return {
           ...r,
           userName: ru ? ru.username : r.userName,
-          userImage: ru ? (ru.customAvatar || ru.userImage) : (r.userImage || "/images/default-avatar.png")
+          userImage: ru ? resolveAvatar(ru) : (r.userImage || "/images/default-avatar.png")
         };
       })
     };

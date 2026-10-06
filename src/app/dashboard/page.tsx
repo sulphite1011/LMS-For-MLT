@@ -98,7 +98,6 @@ export default function DashboardPage() {
     }
   }, [isLoaded, !!clerkUser]);
 
-  console.log("[Dashboard] Render state:", { isLoaded, hasClerkUser: !!clerkUser, hasProfile: !!profile, editMode });
 
   useEffect(() => {
     if (activeTab === "favorites" || activeTab === "liked") fetchCollections();
@@ -107,11 +106,9 @@ export default function DashboardPage() {
 
   const fetchProfile = async () => {
     try {
-      console.log("[Dashboard] Fetching profile...");
       const res = await fetch("/api/users/me");
       if (res.ok) {
         const data = await res.json();
-        console.log("[Dashboard] Profile fetched:", data);
         setProfile(data);
       } else {
         console.error("[Dashboard] Profile fetch failed:", res.status);
@@ -206,7 +203,6 @@ export default function DashboardPage() {
   };
 
   const startEdit = () => {
-    console.log("[Dashboard] startEdit called. Profile:", profile, "ClerkUser:", clerkUser?.username);
     setEditUsername(profile?.username || clerkUser?.username || "");
     setEditBio(profile?.bio || "");
     setAvatarPreview(null);
@@ -322,7 +318,6 @@ export default function DashboardPage() {
               ) : (
                 <button
                   onClick={() => {
-                    console.log("[Dashboard] Edit Profile button clicked");
                     startEdit();
                   }}
                   className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-all text-sm"

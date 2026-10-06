@@ -3,6 +3,30 @@ import dbConnect from "@/lib/db";
 import Comment from "@/models/Comment";
 import mongoose from "mongoose";
 import { getAuthUser } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+
+/**
+ * Rating stats computed inside MongoDB instead of loading every rated comment.
+ * Same semantics as before: only comments with rating > 0 count; average = sum / count;
+ * distribution is a per-star count (1-5 always present).
+ */
+async function getRatingStats(resourceId: string) {
+  const groups: { _id: number; count: number }[] = await Comment.aggregate([
+    { $match: { resourceId: new mongoose.Types.ObjectId(resourceId), rating: { $exists: true, $gt: 0 } } },
+    { $group: { _id: "$rating", count: { $sum: 1 } } },
+  ]);
+
+  const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let totalRatings = 0;
+  let sum = 0;
+  for (const g of groups) {
+    totalRatings += g.count;
+    sum += g._id * g.count;
+    distribution[g._id] = (distribution[g._id] || 0) + g.count;
+  }
+  const averageRating = totalRatings > 0 ? sum / totalRatings : 0;
+  return { totalRatings, averageRating, distribution };
+}
 
 /**
  * GET /api/resources/[id]/rate
@@ -17,22 +41,8 @@ export async function GET(
     const user = await getAuthUser();
     await dbConnect();
 
-    // Get overall rating stats
-    const ratedComments = await Comment.find({
-      resourceId: new mongoose.Types.ObjectId(id),
-      rating: { $exists: true, $gt: 0 },
-    });
-
-    const totalRatings = ratedComments.length;
-    const averageRating = totalRatings > 0
-      ? (ratedComments.reduce((acc, c) => acc + (c.rating || 0), 0) / totalRatings)
-      : 0;
-
-    // Distribution
-    const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    ratedComments.forEach(c => {
-      if (c.rating) distribution[c.rating] = (distribution[c.rating] || 0) + 1;
-    });
+    // Get overall rating stats (+ distribution)
+    const { totalRatings, averageRating, distribution } = await getRatingStats(id);
 
     // Current user's rating (if logged in)
     let userRating = 0;
@@ -67,7 +77,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const user = await getAuthUser();
+    const user = await getAuthUser({ includeAvatar: true });
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -105,15 +115,8 @@ export async function POST(
     );
 
     // Return updated stats
-    const ratedComments = await Comment.find({
-      resourceId: new mongoose.Types.ObjectId(id),
-      rating: { $exists: true, $gt: 0 },
-    });
-
-    const totalRatings = ratedComments.length;
-    const averageRating = totalRatings > 0
-      ? (ratedComments.reduce((acc, c) => acc + (c.rating || 0), 0) / totalRatings)
-      : 0;
+    const { totalRatings, averageRating } = await getRatingStats(id);
+    revalidatePath(`/resource/${id}`);
 
     return NextResponse.json({
       averageRating: Number(averageRating.toFixed(1)),

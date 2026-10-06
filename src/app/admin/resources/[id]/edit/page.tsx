@@ -51,9 +51,15 @@ export default function EditResourcePage() {
         setYoutubeUrls(
           resData.youtubeUrls?.length > 0 ? resData.youtubeUrls : [""]
         );
-        setBannerImageUrl(resData.bannerImageUrl || "");
-        if (resData.bannerImageUrl) {
-          setBannerPreview(resData.bannerImageUrl);
+        // Uploaded banners come back as a relative /api/resources/<id>/banner URL. Make it absolute so
+        // the <input type="url"> below still validates; the API ignores its own banner URL on save,
+        // so the stored image is kept unless the admin replaces or clears it.
+        const loadedBanner: string = resData.bannerImageUrl?.startsWith("/")
+          ? `${window.location.origin}${resData.bannerImageUrl}`
+          : resData.bannerImageUrl || "";
+        setBannerImageUrl(loadedBanner);
+        if (loadedBanner) {
+          setBannerPreview(loadedBanner);
         }
         if (resData.fileData?.fileType === "external") {
           setFileMode("external");
