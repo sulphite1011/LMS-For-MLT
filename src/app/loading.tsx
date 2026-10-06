@@ -1,15 +1,10 @@
-import { Navbar } from "@/components/Navbar";
-import { ResourceGridSkeleton } from "@/components/ui/Skeleton";
+import LoadingComponent from "@/components/ui/Loading";
 
-// Shown while the homepage is being fetched/streamed (e.g. on client-side navigation).
-// Reuses the same skeleton + container the homepage grid already uses while searching.
+// Route-level loading UI: the app's existing branded loader, shown while a route is genuinely loading.
 export default function Loading() {
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-        <ResourceGridSkeleton />
-      </main>
+    <div className="flex items-center justify-center min-h-screen w-full">
+      <LoadingComponent />
     </div>
   );
 }
