@@ -1,33 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
+import { requireAuth } from "@/lib/auth";
+
+// Files are members-only: never store them in browser or shared (CDN) caches.
+const PRIVATE_HEADERS = { "Cache-Control": "private, no-store" };
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Signed-out visitors may not open or download files.
+    try {
+      await requireAuth();
+    } catch (authError) {
+      if (authError instanceof Error && authError.message === "Unauthorized") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: PRIVATE_HEADERS });
+      }
+      throw authError;
+    }
+
     await dbConnect();
     const { id } = await params;
     const { searchParams } = new URL(req.url);
     const index = searchParams.get("index");
-
-    // Cheap pre-check: a validator based on the resource's updatedAt (any edit changes it), so repeat
-    // downloads/previews can be answered with 304 without loading the file out of MongoDB.
-    const meta = await Resource.findById(id).select("updatedAt").lean();
-    if (!meta) {
-      return NextResponse.json({ error: "Resource not found" }, { status: 404 });
-    }
-    const cacheHeaders: Record<string, string> = {};
-    if (meta.updatedAt) {
-      const etag = `W/"${new Date(meta.updatedAt).getTime()}-${index ?? "default"}"`;
-      cacheHeaders["ETag"] = etag;
-      // Browsers always revalidate (cheap, via the ETag); the CDN may reuse a copy briefly.
-      cacheHeaders["Cache-Control"] = "public, max-age=0, must-revalidate, s-maxage=60, stale-while-revalidate=300";
-      if (req.headers.get("if-none-match") === etag) {
-        return new NextResponse(null, { status: 304, headers: cacheHeaders });
-      }
-    }
 
     const resource = await Resource.findById(id).select(
       "fileData.fileContent fileData.fileName fileData.mimeType fileData.fileType files"
@@ -50,7 +47,7 @@ export async function GET(
 
       return new NextResponse(new Uint8Array(buffer as any), {
         headers: {
-          ...cacheHeaders,
+          ...PRIVATE_HEADERS,
           "Content-Type": mimeType,
           "Content-Disposition": `inline; filename="${fileName}"`,
           "Content-Length": (buffer as any).length.toString(),
@@ -69,7 +66,7 @@ export async function GET(
 
     return new NextResponse(new Uint8Array(buffer as any), {
       headers: {
-        ...cacheHeaders,
+        ...PRIVATE_HEADERS,
         "Content-Type": mimeType,
         "Content-Disposition": `inline; filename="${fileName}"`,
         "Content-Length": (buffer as any).length.toString(),
