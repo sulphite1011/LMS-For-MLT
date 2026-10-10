@@ -20,7 +20,7 @@ import {
 import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
 import { DetailSkeleton } from "@/components/ui/Skeleton";
-import { getYoutubeEmbedUrl } from "@/lib/utils";
+import { getYoutubeEmbedUrl, formatDateTime } from "@/lib/utils";
 import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
 
 // Dynamically import CommentSection — it's heavy and below the fold.
@@ -68,7 +68,9 @@ interface Resource {
   externalLinks?: ExternalLink[]; // new multiple external links
   youtubeUrls: string[];
   createdAt: string;
-  createdBy: { _id: string; clerkId: string };
+  createdBy?: { _id: string; clerkId: string };
+  isOrphaned?: boolean;
+  authorName?: string;
   averageRating?: number | string;
   totalRatings?: number;
 }
@@ -280,7 +282,7 @@ export default function ResourceDetailClient({
           className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         >
           {/* Left - Description */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 min-w-0 space-y-6">
             {resource.description && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <h2 className="text-lg font-semibold text-text-primary mb-3">
@@ -378,7 +380,7 @@ export default function ResourceDetailClient({
                 Details
               </h2>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm [&>div]:min-w-0">
                 <div>
                   <span className="text-gray-400">Type</span>
 
@@ -398,15 +400,18 @@ export default function ResourceDetailClient({
                 <div>
                   <span className="text-gray-400 flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
-                    Added
+                    Published
                   </span>
 
                   <p className="font-medium text-gray-700">
-                    {new Date(resource.createdAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    {formatDateTime(resource.createdAt)}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-gray-400">Author</span>
+                  <p className="font-medium text-gray-700 break-words [overflow-wrap:anywhere]">
+                    {resource.authorName || "Unknown Author"}
                   </p>
                 </div>
 
@@ -414,7 +419,7 @@ export default function ResourceDetailClient({
                   <div>
                     <span className="text-gray-400">File</span>
 
-                    <p className="font-medium text-gray-700">
+                    <p className="font-medium text-gray-700 break-words [overflow-wrap:anywhere]">
                       {resource.fileData.fileName}
                     </p>
                   </div>
@@ -424,7 +429,7 @@ export default function ResourceDetailClient({
           </div>
 
           {/* Right - Actions */}
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             {/* Multiple PDFs / Files */}
             {((resource.files && resource.files.length > 0) ||
               resource.fileData) && (
@@ -458,7 +463,7 @@ export default function ResourceDetailClient({
                       resource.files.map((f, i) => (
                         <div key={i} className="space-y-2">
                           {f.label && (
-                            <p className="text-xs text-gray-500 font-medium">
+                            <p className="text-xs text-gray-500 font-medium break-words [overflow-wrap:anywhere]">
                               {f.label || f.fileName}
                             </p>
                           )}
@@ -467,16 +472,19 @@ export default function ResourceDetailClient({
                             href={`/api/resources/${resource._id}/file?index=${i}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 w-full bg-teal hover:bg-teal-dark text-white py-3 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20 text-sm"
+                            className="flex items-center justify-center gap-2 w-full min-w-0 bg-teal hover:bg-teal-dark text-white py-3 px-4 rounded-xl font-medium transition-colors shadow-lg shadow-teal/20 text-sm"
+                            title={f.fileName ? `View ${f.fileName}` : undefined}
                             suppressHydrationWarning
                           >
-                            <FileText className="w-4 h-4" />
+                            <FileText className="w-4 h-4 shrink-0" />
 
-                            {f.fileName
-                              ? `View ${f.fileName}`
-                              : `View PDF ${
-                                  resource.files!.length > 1 ? i + 1 : ""
-                                }`}
+                            <span className="min-w-0 truncate">
+                              {f.fileName
+                                ? `View ${f.fileName}`
+                                : `View PDF ${
+                                    resource.files!.length > 1 ? i + 1 : ""
+                                  }`}
+                            </span>
                           </a>
 
                           <a
@@ -650,6 +658,8 @@ export default function ResourceDetailClient({
                   resourceType={r.resourceType}
                   bannerImageUrl={r.bannerImageUrl}
                   subjectName={r.subjectId?.name || "Unknown"}
+                  authorName={(r as { authorName?: string }).authorName}
+                  createdAt={r.createdAt}
                   hasFile={
                     r.fileData?.fileType === "pdf" ||
                     r.fileData?.fileType === "image"

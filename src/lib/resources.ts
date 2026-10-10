@@ -5,6 +5,7 @@ import Comment from "@/models/Comment";
 import "@/models/Subject"; // registers the model used by .populate("subjectId")
 import "@/models/User"; // registers the model used by .populate("createdBy")
 import { getBannerUrlMap, applyBannerUrls } from "@/lib/banner";
+import { HIDE_FORMER_OWNER, maskOrphans } from "@/lib/orphans";
 
 /**
  * Shared server-side reads for a single resource page. Used by both the resource detail
@@ -13,18 +14,18 @@ import { getBannerUrlMap, applyBannerUrls } from "@/lib/banner";
  */
 
 const LIST_SELECT =
-  "-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl";
+  "-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl " + HIDE_FORMER_OWNER;
 
 /** Full resource detail (same shape GET /api/resources/[id] has always returned), or null if not found. */
 export async function fetchResourceDetail(id: string) {
   if (!mongoose.isValidObjectId(id)) return null;
   await dbConnect();
 
-  const resource = await Resource.findById(id)
+  const resource = await Resource.findOne({ _id: id, deletedAt: null })
     // bannerImageUrl may hold a large base64 data URI; it is replaced by a small URL below.
     .select(LIST_SELECT)
     .populate("subjectId", "name")
-    .populate("createdBy", "clerkId")
+    .populate("createdBy", "clerkId username")
     .lean();
 
   if (!resource) return null;
@@ -41,6 +42,8 @@ export async function fetchResourceDetail(id: string) {
   const totalRatings: number = ratingAgg[0]?.total ?? 0;
   const averageRating = totalRatings > 0 ? (ratingAgg[0].sum / totalRatings).toFixed(1) : 0;
 
+  maskOrphans([resource]);
+
   return {
     ...resource,
     bannerImageUrl: bannerUrls.get(String(resource._id)) ?? "",
@@ -54,16 +57,17 @@ export async function fetchRelatedResources(subjectId: string, excludeId: string
   if (!mongoose.isValidObjectId(subjectId)) return [];
   await dbConnect();
 
-  const resources = await Resource.find({ subjectId })
+  const resources = await Resource.find({ subjectId, deletedAt: null })
     .select(LIST_SELECT)
     .populate("subjectId", "name")
-    .populate("createdBy", "clerkId")
+    .populate("createdBy", "clerkId username")
     .sort({ createdAt: -1 })
     .limit(4)
     .lean();
 
   const bannerUrls = await getBannerUrlMap(resources.map((r) => r._id as unknown as string));
   applyBannerUrls(resources, bannerUrls);
+  maskOrphans(resources);
 
   return resources.filter((r) => String(r._id) !== excludeId);
 }

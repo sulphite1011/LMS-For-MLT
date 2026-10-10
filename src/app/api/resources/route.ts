@@ -7,6 +7,7 @@ import User from "@/models/User";
 import mongoose from "mongoose";
 import { requireAdmin, getAuthUser } from "@/lib/auth";
 import { getBannerUrlMap, applyBannerUrls } from "@/lib/banner";
+import { HIDE_FORMER_OWNER, maskOrphans } from "@/lib/orphans";
 import { revalidatePath } from "next/cache";
 
 export async function GET(req: NextRequest) {
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const isAdminDashboard = searchParams.get("admin") === "true";
 
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, unknown> = { deletedAt: null };
 
     if (search) {
       // Escape user input so it is matched literally (and can't be abused as a regex).
@@ -34,19 +35,26 @@ export async function GET(req: NextRequest) {
     if (type) filter.resourceType = type;
     if (subject) filter.subjectId = subject;
 
+    // Only the Super Admin may see who formerly owned an orphaned ("Unknown Author") resource.
+    let showFormerOwner = false;
     if (isAdminDashboard) {
       const currentUser = await getAuthUser();
       if (currentUser?.role === "admin") {
         filter.createdBy = currentUser._id;
+        filter.isOrphaned = { $ne: true };
       }
+      showFormerOwner = currentUser?.role === "superAdmin";
+      // Super Admin: look at one admin's resources (?owner=<user id>).
+      const owner = searchParams.get("owner");
+      if (showFormerOwner && owner && mongoose.isValidObjectId(owner)) filter.createdBy = owner;
     }
 
     const [resources, total] = await Promise.all([
       Resource.find(filter)
         // bannerImageUrl may hold a large base64 data URI; it is replaced by a small URL below.
-        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl")
+        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl" + (showFormerOwner ? "" : " " + HIDE_FORMER_OWNER))
         .populate("subjectId", "name")
-        .populate("createdBy", "clerkId")
+        .populate("createdBy", "clerkId username")
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -67,6 +75,7 @@ export async function GET(req: NextRequest) {
       getBannerUrlMap(resourceIds),
     ]);
     applyBannerUrls(resources, bannerUrls);
+    maskOrphans(resources, !showFormerOwner);
 
     const resourcesWithRatings = resources.map(resource => {
       const stats = ratingStats.find(s => String(s._id) === String(resource._id));

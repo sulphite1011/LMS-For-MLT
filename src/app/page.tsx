@@ -8,6 +8,7 @@
 // improving LCP and enabling crawlers to see actual resources.
 import { BookOpen, Mail, ArrowRight, Sparkles } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { SocialLinks } from "@/components/SocialLinks";
 import HomeClient from "./HomeClient";
 import dbConnect from "@/lib/db";
 import Resource from "@/models/Resource";
@@ -16,6 +17,7 @@ import Comment from "@/models/Comment";
 import User from "@/models/User"; // Required for .populate("createdBy")
 import mongoose from "mongoose";
 import { getBannerUrlMap, applyBannerUrls } from "@/lib/banner";
+import { HIDE_FORMER_OWNER, maskOrphans } from "@/lib/orphans";
 
 const BASE_URL = "https://lms-for-mlt.vercel.app";
 
@@ -25,11 +27,11 @@ async function getInitialData() {
     await dbConnect();
 
     const [resources, subjects] = await Promise.all([
-      Resource.find({})
+      Resource.find({ deletedAt: null })
         // bannerImageUrl may hold a large base64 data URI; it is replaced by a small URL below.
-        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl")
+        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl " + HIDE_FORMER_OWNER)
         .populate("subjectId", "name")
-        .populate("createdBy", "clerkId")
+        .populate("createdBy", "clerkId username")
         .sort({ createdAt: -1 })
         .limit(20)
         .lean(),
@@ -46,6 +48,7 @@ async function getInitialData() {
       getBannerUrlMap(resourceIds),
     ]);
     applyBannerUrls(resources, bannerUrls);
+    maskOrphans(resources);
 
     const resourcesWithRatings = resources.map((resource) => {
       const stats = ratingStats.find((s) => String(s._id) === String(resource._id));
@@ -170,6 +173,7 @@ export default async function HomePage() {
           <p className="text-sm mb-4">
             Medical Laboratory Technology Study Resources
           </p>
+          <SocialLinks />
           <p className="text-xs text-gray-500">
             Want to contribute?{" "}
             <a

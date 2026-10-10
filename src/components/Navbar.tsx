@@ -6,6 +6,7 @@ import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { BookOpen, LayoutDashboard, Menu, X, User as UserIcon } from "lucide-react";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function Navbar() {
   const { userRole, isLoaded: authLoaded } = useAuthState();
@@ -33,6 +34,14 @@ export function Navbar() {
             >
               Browse Resources
             </Link>
+            <Link
+              href="/mcqs"
+              className="text-sm text-gray-300 hover:text-white transition-colors px-3 py-2"
+            >
+              MCQs
+            </Link>
+
+            <ThemeToggle />
 
             <SignedIn>
               {!authLoaded ? (
@@ -106,6 +115,14 @@ export function Navbar() {
           >
             Browse Resources
           </Link>
+          <Link
+            href="/mcqs"
+            className="block text-sm text-gray-300 hover:text-white py-2"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            MCQs
+          </Link>
+          <ThemeToggle showLabel className="flex items-center gap-2 text-gray-300 hover:text-white py-2" />
           <SignedIn>
             <Link href="/dashboard" className="block text-sm text-gray-300 hover:text-white py-2" onClick={() => setMobileMenuOpen(false)}>
               My Profile

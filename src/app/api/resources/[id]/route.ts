@@ -165,12 +165,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
     const { id } = await params;
 
     await dbConnect();
 
-    const resource = await Resource.findByIdAndDelete(id);
+    // Soft delete: the resource moves to the recycle bin and is removed for good after 30 days
+    // (see lib/recycleBin.ts). It disappears from every public page and API immediately.
+    const resource = await Resource.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { $set: { deletedAt: new Date(), deletedBy: user._id } },
+      { new: true }
+    ).select("_id");
     if (!resource) {
       return NextResponse.json(
         { error: "Resource not found" },
@@ -181,7 +187,7 @@ export async function DELETE(
     revalidatePath("/");
     revalidatePath(`/resource/${id}`);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, recycled: true });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Failed to delete resource";

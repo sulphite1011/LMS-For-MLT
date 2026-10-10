@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
+import Resource from "@/models/Resource";
 import { requireSuperAdmin } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 
 export async function DELETE(
   _req: NextRequest,
@@ -37,8 +39,19 @@ export async function DELETE(
       await User.findByIdAndDelete(id);
     } else {
       // Otherwise, just demote them to regular user
+      const wasAdmin = user.role === "admin";
       user.role = "user";
       await user.save();
+
+      // Their resources become "Unknown Author": hidden from everyone but the Super Admin, who can
+      // see the former owner and claim them (see PATCH /api/resources/[id]/owner).
+      if (wasAdmin) {
+        await Resource.updateMany(
+          { createdBy: user._id, isOrphaned: { $ne: true } },
+          { $set: { isOrphaned: true, formerOwnerId: user._id, formerOwnerName: user.username } }
+        );
+        revalidatePath("/");
+      }
     }
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

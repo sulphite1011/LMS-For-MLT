@@ -3,6 +3,7 @@ import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import Comment from "@/models/Comment";
 import Resource from "@/models/Resource";
+import "@/models/Subject"; // registers the model used by populate("subjectId")
 import { getAuthUser } from "@/lib/auth";
 
 /**

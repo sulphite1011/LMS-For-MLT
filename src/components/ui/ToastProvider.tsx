@@ -9,13 +9,13 @@ export function ToastProvider() {
       toastOptions={{
         duration: 4000,
         style: {
-          background: "#ffffff",
-          color: "#1e293b",
+          background: "var(--toast-bg, #ffffff)",
+          color: "var(--toast-fg, #1e293b)",
           borderRadius: "1rem",
           padding: "1rem",
           boxShadow:
             "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-          border: "1px solid #e2e8f0",
+          border: "1px solid var(--toast-border, #e2e8f0)",
           fontSize: "0.875rem",
           fontWeight: "500",
         },

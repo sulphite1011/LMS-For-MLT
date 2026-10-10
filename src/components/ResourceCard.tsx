@@ -5,9 +5,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { BookOpen, FileText, Video, FileCheck, HelpCircle, BookMarked, Star, Bookmark, Heart } from "lucide-react";
 import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
+import { formatDateTime, formatShortDate } from "@/lib/utils";
 
 interface ResourceCardProps {
   _id: string;
@@ -20,6 +21,8 @@ interface ResourceCardProps {
   averageRating?: number | string;
   totalRatings?: number;
   resourceAuthorId?: string;
+  authorName?: string;
+  createdAt?: string;
   isFavorite?: boolean;
   isLiked?: boolean;
   onFavoriteToggle?: (_id: string, action: "added" | "removed") => void;
@@ -36,7 +39,7 @@ const typeIcons: Record<ResourceType, React.ReactNode> = {
 
 export function ResourceCard({
   _id, title, description, resourceType, bannerImageUrl,
-  subjectName, hasFile, averageRating, totalRatings,
+  subjectName, hasFile, averageRating, totalRatings, authorName, createdAt,
   isFavorite = false, isLiked = false,
   onFavoriteToggle, onLikeToggle,
 }: ResourceCardProps) {
@@ -44,6 +47,10 @@ export function ResourceCard({
   const [localFav, setLocalFav] = useState(isFavorite);
   const [localLike, setLocalLike] = useState(isLiked);
   const [loading, setLoading] = useState(false);
+
+  // Props can arrive after the first render (the viewer's profile loads in the browser): keep in sync.
+  useEffect(() => { setLocalFav(isFavorite); }, [isFavorite]);
+  useEffect(() => { setLocalLike(isLiked); }, [isLiked]);
 
   const handleFav = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -178,6 +185,13 @@ export function ResourceCard({
             </div>
             <h3 className="font-semibold text-text-primary text-base line-clamp-2 mb-2 group-hover:text-teal transition-colors">{title}</h3>
             {description && <p className="text-sm text-gray-500 line-clamp-2 flex-1">{description}</p>}
+            {(authorName || createdAt) && (
+              <p className="mt-3 text-xs text-gray-400 truncate">
+                {authorName && <>By <span className="font-medium text-gray-500">{authorName}</span></>}
+                {authorName && createdAt && " · "}
+                {createdAt && <span title={formatDateTime(createdAt)}>{formatShortDate(createdAt)}</span>}
+              </p>
+            )}
             {totalRatings !== undefined && totalRatings > 0 && (
               <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold">
                 <div className="flex items-center gap-1 text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-md">

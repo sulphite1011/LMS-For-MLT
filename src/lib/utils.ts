@@ -89,3 +89,23 @@ export function getAvatar(imageUrl?: string | null): string {
   }
   return imageUrl;
 }
+
+const SITE_TIME_ZONE = "Asia/Karachi";
+
+/** Fixed-zone date + time (same text on server and browser, so no hydration mismatch). e.g. "9 Oct 2026, 4:43 PM PKT". */
+export function formatDateTime(date: Date | string): string {
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  const text = d.toLocaleString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+    hour: "numeric", minute: "2-digit", hour12: true, timeZone: SITE_TIME_ZONE,
+  });
+  return `${text.replace(/\b(am|pm)\b/i, (m) => m.toUpperCase())} PKT`;
+}
+
+/** Fixed-zone short date, e.g. "9 Oct 2026". */
+export function formatShortDate(date: Date | string): string {
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: SITE_TIME_ZONE });
+}

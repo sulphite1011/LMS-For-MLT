@@ -26,7 +26,7 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const index = searchParams.get("index");
 
-    const resource = await Resource.findById(id).select(
+    const resource = await Resource.findOne({ _id: id, deletedAt: null }).select(
       "fileData.fileContent fileData.fileName fileData.mimeType fileData.fileType files"
     );
 

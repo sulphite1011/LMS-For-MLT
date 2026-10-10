@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
+import { useUser } from "@clerk/nextjs";
 import { ResourceCard } from "@/components/ResourceCard";
 import { SearchFilterBar } from "@/components/SearchFilterBar";
 import { EmptyState } from "@/components/EmptyState";
@@ -24,6 +25,8 @@ interface Resource {
   averageRating?: number | string;
   totalRatings?: number;
   createdBy?: { clerkId: string };
+  authorName?: string;
+  createdAt?: string;
 }
 
 interface HomeClientProps {
@@ -35,8 +38,22 @@ interface HomeClientProps {
 export default function HomeClient({
   initialResources,
   initialSubjects,
-  currentUser,
+  currentUser: initialUser,
 }: HomeClientProps) {
+  // The homepage is cached/static, so it cannot know who is signed in. Load the viewer's own
+  // favorites/likes in the browser so the hearts and bookmarks show the saved state.
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
+  const [currentUser, setCurrentUser] = useState<any>(initialUser);
+  useEffect(() => {
+    if (!userLoaded) return;
+    if (!isSignedIn) { setCurrentUser(null); return; }
+    let cancelled = false;
+    fetch("/api/users/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled && data) setCurrentUser(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [userLoaded, isSignedIn]);
   const [resources, setResources] = useState<Resource[]>(initialResources);
   const [subjects] = useState<Subject[]>(initialSubjects);
   const [loading, setLoading] = useState(false);
@@ -69,6 +86,23 @@ export default function HomeClient({
       setLoading(false);
     }
   }, [debouncedSearch, activeType, activeSubject]);
+
+  // The cached homepage can lag behind (it is rebuilt in the background, and a failed rebuild keeps
+  // the previous copy). So after load, fetch the newest list once and use it when no filter is
+  // active — newly uploaded resources then always show up.
+  const filtersActive = useRef(false);
+  filtersActive.current = Boolean(debouncedSearch || activeType || activeSubject || search);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/resources?limit=20", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || filtersActive.current) return;
+        if (Array.isArray(data?.resources) && data.resources.length > 0) setResources(data.resources);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Only re-fetch when filters change (not on mount — we have initial data)
   useEffect(() => {
@@ -137,6 +171,8 @@ export default function HomeClient({
                     (resource.files && resource.files.length > 0)
                   }
                   resourceAuthorId={resource.createdBy?.clerkId}
+                  authorName={resource.authorName}
+                  createdAt={resource.createdAt}
                   averageRating={resource.averageRating}
                   totalRatings={resource.totalRatings}
                   isFavorite={currentUser?.favoriteResources?.includes(resource._id)}
