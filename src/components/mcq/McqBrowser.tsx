@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { CheckCircle2, ChevronRight, Loader2, PlayCircle, Search, X } from "lucide-react";
@@ -29,6 +29,7 @@ interface Props {
 }
 
 const STORE_KEY = "mcq-hub-selection";
+const CACHE_KEY = "mcq-hub-progress-v1";
 
 const unitHref = (sp: McqCatalogSpecialty, sub: McqCatalogSubject, u: McqCatalogUnit) =>
   `/mcqs/${sp.slug}/${sub.semester}/${sub.slug}/${u.slug}`;
@@ -39,11 +40,13 @@ const unitHref = (sp: McqCatalogSpecialty, sub: McqCatalogSubject, u: McqCatalog
  * choice; signed-in users also see ticks and a "continue" strip.
  */
 export function McqBrowser({ catalog, initial }: Props) {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const [spSlug, setSpSlug] = useState<string>("");
   const [sem, setSem] = useState<number>(0);
   const [subSlug, setSubSlug] = useState<string>("");
   const [opening, setOpening] = useState<string>("");
+  /** false until we know the student's progress (from cache or network) — avoids "Start" flipping to "Best 80%" */
+  const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Record<string, UnitStatus>>({});
   const [resume, setResume] = useState<ResumeItem[]>([]);
@@ -113,23 +116,70 @@ export function McqBrowser({ catalog, initial }: Props) {
     return () => window.removeEventListener("pageshow", clear);
   }, []);
 
-  // ---- signed-in extras ----------------------------------------------------
-  const loadProgress = useCallback(async () => {
+  // ---- signed-in extras: show the cached copy instantly, refresh quietly ----
+  useLayoutEffect(() => {
     try {
-      const [a, b] = await Promise.all([
-        fetch("/api/mcq/progress/units", { cache: "no-store" }),
-        fetch("/api/mcq/progress/summary", { cache: "no-store" }),
-      ]);
-      if (a.ok) setStatus((await a.json()).progress ?? {});
-      if (b.ok) setResume(((await b.json()).resume ?? []) as ResumeItem[]);
+      const c = JSON.parse(window.localStorage.getItem(CACHE_KEY) || "null");
+      if (c?.status) {
+        setStatus(c.status);
+        setResume(c.resume ?? []);
+        setReady(true);
+      }
     } catch {
-      /* offline */
+      /* no cache */
     }
   }, []);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) void loadProgress();
-  }, [isLoaded, isSignedIn, loadProgress]);
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setStatus({});
+      setResume([]);
+      setReady(true);
+      try {
+        window.localStorage.removeItem(CACHE_KEY);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    // a cached copy belonging to someone else must not be shown
+    try {
+      const c = JSON.parse(window.localStorage.getItem(CACHE_KEY) || "null");
+      if (c && c.uid !== userId) {
+        setStatus({});
+        setResume([]);
+        setReady(false);
+      }
+    } catch {
+      /* ignore */
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [a, b] = await Promise.all([
+          fetch("/api/mcq/progress/units", { cache: "no-store" }),
+          fetch("/api/mcq/progress/summary", { cache: "no-store" }),
+        ]);
+        if (cancelled) return;
+        const nextStatus: Record<string, UnitStatus> = a.ok ? ((await a.json()).progress ?? {}) : {};
+        const nextResume: ResumeItem[] = b.ok ? (((await b.json()).resume ?? []) as ResumeItem[]) : [];
+        setStatus(nextStatus);
+        setResume(nextResume);
+        setReady(true);
+        try {
+          window.localStorage.setItem(CACHE_KEY, JSON.stringify({ uid: userId, status: nextStatus, resume: nextResume }));
+        } catch {
+          /* ignore */
+        }
+      } catch {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn, userId]);
 
   // ---- search --------------------------------------------------------------
   const q = query.trim().toLowerCase();
@@ -165,23 +215,34 @@ export function McqBrowser({ catalog, initial }: Props) {
     setOpening(id);
   };
 
+  /** right-hand label; a placeholder while progress is still loading so nothing "pops in" */
+  const Label = ({ u, busy }: { u: McqCatalogUnit; busy: boolean }) => {
+    const st = status[u.id];
+    if (busy) return <>Opening…</>;
+    if (!ready) return <span className="hub-skel inline-block h-3.5 w-14 align-middle" />;
+    if (st?.completed || st?.attempts) return <>Best {st.bestScore}%</>;
+    if (st?.inProgress) return <>Resume</>;
+    return <>Start</>;
+  };
+
   const UnitRow = ({ sp, sub, u }: { sp: McqCatalogSpecialty; sub: McqCatalogSubject; u: McqCatalogUnit }) => {
     const st = status[u.id];
     const busy = opening === u.id;
+    const state = !ready ? "pending" : st?.completed ? "done" : st?.inProgress ? "progress" : "new";
     return (
       <Link
         href={unitHref(sp, sub, u)}
         onClick={onOpen(u.id)}
-        className={`group flex items-center gap-3 rounded-xl border bg-white px-4 py-3 transition-all active:scale-[0.99] ${
-          busy ? "border-teal bg-teal/5" : "border-gray-100 hover:border-teal/40 hover:bg-teal/5"
-        }`}
+        data-state={state}
+        data-busy={busy}
+        className="hub-tile group flex items-center gap-3 rounded-xl px-4 py-3 active:scale-[0.99]"
       >
         <span className="shrink-0">
           {busy ? (
             <Loader2 className="w-5 h-5 text-teal animate-spin" />
-          ) : st?.completed ? (
+          ) : state === "done" ? (
             <CheckCircle2 className="w-5 h-5 text-green-500" />
-          ) : st?.inProgress ? (
+          ) : state === "progress" ? (
             <PlayCircle className="w-5 h-5 text-teal" />
           ) : (
             <span className="block w-5 h-5 rounded-full border-2 border-gray-200 group-hover:border-teal/50" />
@@ -193,7 +254,9 @@ export function McqBrowser({ catalog, initial }: Props) {
             {sp.name} · Sem {sub.semester} · {sub.name}
           </span>
         </span>
-        <span className="shrink-0 text-xs text-gray-400">{busy ? "Opening…" : st?.attempts ? `Best ${st.bestScore}%` : u.qCount ? `${u.qCount} Qs` : ""}</span>
+        <span className="shrink-0 text-xs font-semibold text-teal">
+          <Label u={u} busy={busy} />
+        </span>
         <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-teal shrink-0" />
       </Link>
     );
@@ -202,40 +265,26 @@ export function McqBrowser({ catalog, initial }: Props) {
   const UnitTile = ({ sp, sub, u, n }: { sp: McqCatalogSpecialty; sub: McqCatalogSubject; u: McqCatalogUnit; n: number }) => {
     const st = status[u.id];
     const busy = opening === u.id;
-    const state = st?.completed ? "done" : st?.inProgress ? "progress" : "new";
+    const state = !ready ? "pending" : st?.completed ? "done" : st?.inProgress ? "progress" : "new";
     return (
       <Link
         href={unitHref(sp, sub, u)}
         onClick={onOpen(u.id)}
-        className={`group relative flex flex-col justify-between gap-3 rounded-2xl border p-4 min-h-[112px] transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98] ${
-          busy
-            ? "border-teal bg-teal/5 shadow-md"
-            : state === "done"
-              ? "border-green-200 bg-green-50/60 hover:border-green-300"
-              : state === "progress"
-                ? "border-teal/40 bg-teal/5 hover:border-teal"
-                : "border-gray-200 bg-white hover:border-teal/50"
-        }`}
+        data-state={state}
+        data-busy={busy}
+        className="hub-tile group relative flex flex-col justify-between gap-3 rounded-2xl p-4 min-h-[112px] hover:-translate-y-0.5 active:scale-[0.98]"
       >
         <div className="flex items-start gap-3">
-          <span
-            className={`shrink-0 grid place-items-center w-8 h-8 rounded-lg text-sm font-bold ${
-              state === "done" ? "bg-green-500 text-white" : "bg-navy text-white group-hover:bg-teal"
-            } transition-colors`}
-          >
+          <span className="hub-num shrink-0 grid place-items-center w-8 h-8 rounded-lg text-sm font-bold">
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : state === "done" ? <CheckCircle2 className="w-4 h-4" /> : n}
           </span>
           <span className="min-w-0 text-sm font-semibold leading-snug text-text-primary line-clamp-3 [overflow-wrap:anywhere]">{u.name}</span>
         </div>
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center justify-between text-xs h-5">
           <span className="text-gray-400">{u.qCount ? `${u.qCount} questions` : "MCQs"}</span>
-          <span
-            className={`inline-flex items-center gap-1 font-semibold ${
-              busy ? "text-teal" : state === "done" ? "text-green-600" : state === "progress" ? "text-teal" : "text-teal opacity-0 group-hover:opacity-100 max-sm:opacity-100"
-            } transition-opacity`}
-          >
-            {busy ? "Opening…" : state === "done" ? `Best ${st?.bestScore ?? 0}%` : state === "progress" ? "Resume" : "Start"}
-            {!busy && <ChevronRight className="w-3.5 h-3.5" />}
+          <span className="hub-action inline-flex items-center gap-1 font-semibold">
+            <Label u={u} busy={busy} />
+            {!busy && ready && <ChevronRight className="w-3.5 h-3.5" />}
           </span>
         </div>
       </Link>
@@ -314,7 +363,7 @@ export function McqBrowser({ catalog, initial }: Props) {
                     setSubSlug("");
                   }}
                   className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all ${
-                    active ? "bg-navy text-white border-navy shadow-sm" : "bg-white text-gray-600 border-gray-200 hover:border-teal/40 hover:text-teal"
+                    active ? "hub-pill-on shadow-sm" : "bg-white text-gray-600 border-gray-200 hover:border-teal/40 hover:text-teal"
                   }`}
                 >
                   {c.name}
@@ -366,19 +415,11 @@ export function McqBrowser({ catalog, initial }: Props) {
                       role="tab"
                       aria-selected={active}
                       onClick={() => setSubSlug(sub.slug)}
-                      className={`group inline-flex items-center gap-2 max-w-full rounded-2xl border px-4 py-2.5 text-sm font-semibold text-left transition-all ${
-                        active
-                          ? "bg-gradient-to-br from-navy to-navy-light text-white border-navy shadow-md"
-                          : "bg-white text-gray-700 border-gray-200 hover:border-teal/50 hover:text-teal"
-                      }`}
+                      className="hub-chip inline-flex items-center gap-2 max-w-full rounded-2xl px-4 py-2.5 text-sm font-semibold text-left"
                     >
                       <span className="truncate">{sub.name}</span>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                          active ? "bg-white/15 text-white" : "bg-gray-100 text-gray-500 group-hover:bg-teal/10 group-hover:text-teal"
-                        }`}
-                      >
-                        {done > 0 ? `${done}/${sub.units.length}` : sub.units.length}
+                      <span className="hub-chip-count shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold">
+                        {ready && done > 0 ? `${done}/${sub.units.length}` : sub.units.length}
                       </span>
                     </button>
                   );
@@ -396,7 +437,7 @@ export function McqBrowser({ catalog, initial }: Props) {
                         <span>
                           {activeSub.units.length} unit{activeSub.units.length === 1 ? "" : "s"}
                         </span>
-                        {isSignedIn && (
+                        {isSignedIn && ready && (
                           <span className="hidden sm:flex items-center gap-2">
                             <span className="w-24 h-1.5 rounded-full bg-gray-100 overflow-hidden">
                               <span className="block h-full rounded-full bg-teal transition-all" style={{ width: `${pct}%` }} />
