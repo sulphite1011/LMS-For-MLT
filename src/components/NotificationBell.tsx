@@ -3,14 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { Bell, BookOpen, Megaphone, Settings } from "lucide-react";
+import { Archive, ArchiveRestore, Bell, BookOpen, Megaphone, Settings, Sparkles, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 import { formatDistanceToNow } from "@/lib/utils";
 
 interface Item {
   _id: string;
   title: string;
   message?: string;
-  kind: "resource" | "custom";
+  kind: "resource" | "custom" | "setup";
   semester?: number | null;
   link?: string;
   createdAt: string;
@@ -18,18 +19,22 @@ interface Item {
 
 interface Payload {
   notifications: Item[];
+  archived: Item[];
   unreadCount: number;
   seenAt: string;
   settings: { enabled: boolean; currentSemester: number | null };
 }
 
+type Tab = "inbox" | "archived";
+
 const POLL_MS = 60_000;
 
-/** Bell with an unread badge and a dropdown list. Shown only to signed-in users. */
+/** Bell with an unread badge, an Inbox / Archived dropdown, and archive / delete per notification. Signed-in users only. */
 export function NotificationBell() {
   const { isLoaded, isSignedIn } = useUser();
   const [data, setData] = useState<Payload | null>(null);
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>("inbox");
   const [seenBefore, setSeenBefore] = useState<number>(0);
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -72,6 +77,7 @@ export function NotificationBell() {
   const toggle = async () => {
     const next = !open;
     setOpen(next);
+    if (next) setTab("inbox");
     if (next && data) {
       setSeenBefore(new Date(data.seenAt).getTime());
       if (data.unreadCount > 0) {
@@ -79,6 +85,116 @@ export function NotificationBell() {
         fetch("/api/notifications/read", { method: "POST" }).catch(() => {});
       }
     }
+  };
+
+  /** Optimistic archive / unarchive / delete; reloads from the server if the request fails. */
+  const act = async (item: Item, action: "archive" | "unarchive" | "delete") => {
+    if (!data) return;
+    setData({
+      ...data,
+      notifications:
+        action === "unarchive"
+          ? [item, ...data.notifications].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+          : data.notifications.filter((n) => n._id !== item._id),
+      archived:
+        action === "archive"
+          ? [item, ...data.archived].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+          : data.archived.filter((n) => n._id !== item._id),
+    });
+    try {
+      const res = await fetch(`/api/notifications/${item._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) throw new Error();
+      if (action === "delete") toast.success("Notification deleted");
+      else if (action === "archive") toast.success("Archived");
+      else toast.success("Moved back to inbox");
+    } catch {
+      toast.error("Could not update. Try again.");
+      load();
+    }
+  };
+
+  const list = tab === "inbox" ? data?.notifications ?? [] : data?.archived ?? [];
+  const archivedCount = data?.archived.length ?? 0;
+
+  const renderItem = (n: Item) => {
+    const isNew = tab === "inbox" && new Date(n.createdAt).getTime() > seenBefore;
+    const isSetup = n.kind === "setup";
+    const body = (
+      <div className="flex gap-3 min-w-0 flex-1">
+        <div className="w-8 h-8 rounded-full bg-teal/10 text-teal flex items-center justify-center shrink-0">
+          {n.kind === "resource" ? <BookOpen className="w-4 h-4" /> : n.kind === "setup" ? <Sparkles className="w-4 h-4" /> : <Megaphone className="w-4 h-4" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-text-primary break-words [overflow-wrap:anywhere]">{n.title}</p>
+          {n.message && <p className="text-xs text-slate-500 mt-0.5 break-words [overflow-wrap:anywhere]">{n.message}</p>}
+          {!isSetup && (
+            <p className="text-[11px] text-slate-400 mt-1">
+              {formatDistanceToNow(new Date(n.createdAt))}
+              {n.semester ? ` · Semester ${n.semester}` : " · Everyone"}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+
+    return (
+      <div
+        key={n._id}
+        className={`flex items-start gap-1 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors ${isNew || isSetup ? "bg-teal/5" : ""}`}
+      >
+        {n.link ? (
+          n.link.startsWith("/") ? (
+            <Link href={n.link} onClick={() => setOpen(false)} className="flex min-w-0 flex-1">
+              {body}
+            </Link>
+          ) : (
+            <a href={n.link} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1">
+              {body}
+            </a>
+          )
+        ) : (
+          body
+        )}
+        {!isSetup && (
+          <div className="flex flex-col gap-1 shrink-0">
+            {tab === "inbox" ? (
+              <button
+                type="button"
+                onClick={() => act(n, "archive")}
+                aria-label="Archive notification"
+                title="Archive"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-teal hover:bg-teal/10 transition-colors"
+              >
+                <Archive className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => act(n, "unarchive")}
+                aria-label="Move back to inbox"
+                title="Unarchive"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-teal hover:bg-teal/10 transition-colors"
+              >
+                <ArchiveRestore className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => act(n, "delete")}
+              aria-label="Delete notification"
+              title="Delete"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -112,6 +228,25 @@ export function NotificationBell() {
             </Link>
           </div>
 
+          {data?.settings.enabled && (
+            <div className="flex gap-1 px-3 pt-2 border-b border-slate-100" role="tablist">
+              {(["inbox", "archived"] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === t}
+                  onClick={() => setTab(t)}
+                  className={`px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors ${
+                    tab === t ? "border-teal text-teal" : "border-transparent text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {t === "inbox" ? "Inbox" : `Archived${archivedCount ? ` (${archivedCount})` : ""}`}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="max-h-96 overflow-y-auto">
             {!data?.settings.enabled ? (
               <p className="px-4 py-8 text-center text-sm text-slate-500">
@@ -121,46 +256,18 @@ export function NotificationBell() {
                 </Link>
                 .
               </p>
-            ) : data.notifications.length === 0 ? (
+            ) : list.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-slate-500">
-                You&apos;re all caught up.
-                {!data.settings.currentSemester && (
-                  <>
-                    {" "}
-                    <Link href="/dashboard?tab=notifications" onClick={() => setOpen(false)} className="text-teal hover:underline">
-                      Choose your semester
-                    </Link>{" "}
-                    to get the right updates.
-                  </>
-                )}
+                {tab === "inbox" ? "You're all caught up." : "Nothing archived. Archive a notification to keep it here."}
               </p>
             ) : (
-              data.notifications.map((n) => {
-                const isNew = new Date(n.createdAt).getTime() > seenBefore;
-                const inner = (
-                  <div className={`flex gap-3 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors ${isNew ? "bg-teal/5" : ""}`}>
-                    <div className="w-8 h-8 rounded-full bg-teal/10 text-teal flex items-center justify-center shrink-0">
-                      {n.kind === "resource" ? <BookOpen className="w-4 h-4" /> : <Megaphone className="w-4 h-4" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-text-primary break-words [overflow-wrap:anywhere]">{n.title}</p>
-                      {n.message && <p className="text-xs text-slate-500 mt-0.5 break-words [overflow-wrap:anywhere]">{n.message}</p>}
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        {formatDistanceToNow(new Date(n.createdAt))}
-                        {n.semester ? ` · Semester ${n.semester}` : " · Everyone"}
-                      </p>
-                    </div>
-                  </div>
-                );
-                if (!n.link) return <div key={n._id}>{inner}</div>;
-                return n.link.startsWith("/") ? (
-                  <Link key={n._id} href={n.link} onClick={() => setOpen(false)}>{inner}</Link>
-                ) : (
-                  <a key={n._id} href={n.link} target="_blank" rel="noopener noreferrer">{inner}</a>
-                );
-              })
+              list.map(renderItem)
             )}
           </div>
+
+          {data?.settings.enabled && (
+            <p className="px-4 py-2 text-[11px] text-slate-400 border-t border-slate-100">Notifications are removed automatically after 60 days.</p>
+          )}
         </div>
       )}
     </div>

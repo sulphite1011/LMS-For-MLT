@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import {
-  CheckCircle2, ChevronLeft, ChevronRight, Clock, Flag, Loader2, PlayCircle, RotateCcw, Target, Timer, XCircle,
-} from "lucide-react";
+import "./mcq-player.css";
 
 export interface PlayerQuestion {
   q: string;
@@ -16,13 +15,10 @@ export interface PlayerQuestion {
 }
 
 interface SavedProgress {
-  completed: boolean;
-  attempts: number;
-  bestScore: number;
-  lastScore: number;
-  lastTotal: number;
-  lastCorrect: number;
-  missed: number[];
+  completed?: boolean;
+  attempts?: number;
+  bestScore?: number;
+  missed?: number[];
   session?: {
     mode: "practice" | "test";
     order: number[];
@@ -33,7 +29,7 @@ interface SavedProgress {
 }
 
 type Mode = "practice" | "test";
-type Phase = "menu" | "quiz" | "result";
+type Phase = "setup" | "quiz" | "result" | "review";
 
 interface Props {
   unitId: string;
@@ -44,10 +40,18 @@ interface Props {
 
 const LETTERS = "ABCDEFGH";
 const TEST_SIZES = [3, 5, 10, 15, 20, 25, 30, 40, 50];
-const SECONDS_PER_QUESTION = 60;
+/** Standard: 1.5 minutes per MCQ. */
+const SECONDS_PER_QUESTION = 90;
+/** Visitors can answer this many MCQs (in total) before being asked to create a free account. */
+const FREE_LIMIT = 10;
+const FREE_KEY = "mcq-free-answers";
+
+function allIndexes(n: number): number[] {
+  return Array.from({ length: n }, (_, i) => i);
+}
 
 function shuffled(n: number): number[] {
-  const a = Array.from({ length: n }, (_, i) => i);
+  const a = allIndexes(n);
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
@@ -55,37 +59,62 @@ function shuffled(n: number): number[] {
   return a;
 }
 
-function fmt(sec: number): string {
-  const s = Math.max(0, Math.floor(sec));
-  const m = Math.floor(s / 60);
-  return `${String(m).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+function formatTime(total: number): string {
+  const t = Math.max(0, Math.floor(total));
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+}
+
+function readFree(): number {
+  try {
+    return Math.max(0, parseInt(window.localStorage.getItem(FREE_KEY) || "0", 10) || 0);
+  } catch {
+    return 0;
+  }
+}
+
+function writeFree(n: number) {
+  try {
+    window.localStorage.setItem(FREE_KEY, String(n));
+  } catch {
+    /* storage may be unavailable */
+  }
 }
 
 export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
   const { isSignedIn, isLoaded } = useAuth();
+  const pathname = usePathname();
   const total = questions.length;
 
-  const [phase, setPhase] = useState<Phase>("menu");
+  const testOptions = useMemo(() => {
+    const values = TEST_SIZES.filter((n) => n < total);
+    values.push(total);
+    return [...new Set(values)].sort((a, b) => a - b);
+  }, [total]);
+
   const [mode, setMode] = useState<Mode>("practice");
-  const [testCount, setTestCount] = useState(Math.min(10, total));
-  const [order, setOrder] = useState<number[]>([]);
-  const [answers, setAnswers] = useState<number[]>([]);
+  const [phase, setPhase] = useState<Phase>("quiz");
+  const [testSize, setTestSize] = useState(Math.min(5, total));
+  const [order, setOrder] = useState<number[]>(() => allIndexes(total));
+  const [answers, setAnswers] = useState<number[]>(() => Array(total).fill(-1));
   const [index, setIndex] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [progress, setProgress] = useState<SavedProgress | null>(null);
-  const [loadingProgress, setLoadingProgress] = useState(true);
   const [finishing, setFinishing] = useState(false);
   const [missedNow, setMissedNow] = useState<number[]>([]);
+  const [freeUsed, setFreeUsed] = useState(0);
+  const [gate, setGate] = useState(false);
 
   const stateRef = useRef({ mode, order, answers, index, elapsed });
   stateRef.current = { mode, order, answers, index, elapsed };
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ---- load saved progress -------------------------------------------------
+  const visitor = isLoaded && !isSignedIn;
+
+  // ---- saved progress / free-answer counter --------------------------------
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) {
-      setLoadingProgress(false);
+      setFreeUsed(readFree());
       return;
     }
     let cancelled = false;
@@ -94,16 +123,12 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
       .then((d) => {
         if (!cancelled) setProgress(d?.progress ?? null);
       })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoadingProgress(false);
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [unitId, isLoaded, isSignedIn]);
 
-  // ---- API helpers ---------------------------------------------------------
   const put = useCallback(
     async (body: Record<string, unknown>) => {
       const res = await fetch("/api/mcq/progress", {
@@ -117,15 +142,19 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
     [unitId]
   );
 
+  const saveNow = useCallback(async () => {
+    const s = stateRef.current;
+    if (!isSignedIn || !s.order.length) return null;
+    return put({ action: "save", mode: s.mode, order: s.order, answers: s.answers, index: s.index, elapsedSec: s.elapsed });
+  }, [isSignedIn, put]);
+
   const scheduleSave = useCallback(() => {
     if (!isSignedIn) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      const s = stateRef.current;
-      if (!s.order.length) return;
-      put({ action: "save", mode: s.mode, order: s.order, answers: s.answers, index: s.index, elapsedSec: s.elapsed }).catch(() => {});
+      saveNow().catch(() => {});
     }, 700);
-  }, [isSignedIn, put]);
+  }, [isSignedIn, saveNow]);
 
   useEffect(
     () => () => {
@@ -134,42 +163,20 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
     []
   );
 
-  // ---- timer ---------------------------------------------------------------
+  // ---- timer (test mode) ---------------------------------------------------
+  const limit = mode === "test" ? order.length * SECONDS_PER_QUESTION : 0;
+  const remaining = Math.max(0, limit - elapsed);
+
   useEffect(() => {
-    if (phase !== "quiz") return;
+    if (mode !== "test" || phase !== "quiz") return;
     const id = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(id);
-  }, [phase]);
-
-  const limit = mode === "test" ? order.length * SECONDS_PER_QUESTION : 0;
-
-  // ---- start / finish ------------------------------------------------------
-  const begin = (m: Mode, ord: number[], ans?: number[], idx = 0, el = 0) => {
-    setMode(m);
-    setOrder(ord);
-    setAnswers(ans ?? ord.map(() => -1));
-    setIndex(idx);
-    setElapsed(el);
-    setPhase("quiz");
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const startPractice = () => begin("practice", Array.from({ length: total }, (_, i) => i));
-  const startTest = () => begin("test", shuffled(total).slice(0, Math.min(testCount, total)));
-  const retryMissed = (ids: number[]) => begin("practice", ids);
-  const resume = () => {
-    const s = progress?.session;
-    if (!s) return;
-    const validOrder = s.order.every((q) => q >= 0 && q < total);
-    if (!validOrder) return startPractice();
-    begin(s.mode, s.order, s.answers, s.index, s.elapsedSec);
-  };
+  }, [mode, phase]);
 
   const finish = useCallback(async () => {
     const s = stateRef.current;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setFinishing(true);
-    // local scoring is the fallback; a signed-in user's result is scored by the server
     const localMissed = s.order.filter((qi, pos) => s.answers[pos] !== questions[qi].answer);
     let missed = localMissed;
     if (isSignedIn) {
@@ -187,42 +194,44 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }, [isSignedIn, put, questions]);
 
-  // auto-submit when the test countdown reaches zero
   useEffect(() => {
-    if (phase === "quiz" && mode === "test" && limit > 0 && elapsed >= limit && !finishing) {
-      toast("Time is up — submitting your test.");
+    if (mode === "test" && phase === "quiz" && limit > 0 && elapsed >= limit && !finishing) {
+      toast("Time is up — your test was submitted.");
       void finish();
     }
-  }, [phase, mode, limit, elapsed, finishing, finish]);
+  }, [mode, phase, limit, elapsed, finishing, finish]);
 
-  const choose = (opt: number) => {
-    if (phase !== "quiz") return;
-    if (mode === "practice" && answers[index] >= 0) return; // locked after answering
-    setAnswers((prev) => {
-      const next = [...prev];
-      next[index] = opt;
-      stateRef.current = { ...stateRef.current, answers: next };
-      return next;
-    });
-    scheduleSave();
+  // ---- starting / switching ------------------------------------------------
+  const begin = (m: Mode, ord: number[], ans?: number[], idx = 0, el = 0) => {
+    setMode(m);
+    setOrder(ord);
+    setAnswers(ans ?? ord.map(() => -1));
+    setIndex(idx);
+    setElapsed(el);
+    setMissedNow([]);
+    setPhase("quiz");
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const go = (i: number) => {
-    setIndex(i);
-    stateRef.current = { ...stateRef.current, index: i };
-    scheduleSave();
+  const resetPractice = () => begin("practice", allIndexes(total));
+
+  const goTestSetup = () => {
+    setMode("test");
+    setOrder([]);
+    setAnswers([]);
+    setIndex(0);
+    setElapsed(0);
+    setMissedNow([]);
+    setPhase("setup");
   };
 
-  const toggleComplete = async () => {
-    if (!isSignedIn) return toast.error("Sign in to track your progress");
-    const next = !progress?.completed;
-    try {
-      const data = await put({ action: "complete", completed: next });
-      setProgress((p) => ({ ...(p as SavedProgress), ...data.progress }));
-      toast.success(next ? "Marked as completed" : "Marked as not completed");
-    } catch {
-      toast.error("Could not update. Try again.");
-    }
+  const startTest = () => begin("test", shuffled(total).slice(0, Math.min(testSize, total)));
+  const retryMissed = (ids: number[]) => begin("practice", ids);
+
+  const resume = () => {
+    const s = progress?.session;
+    if (!s || !s.order.every((q) => q >= 0 && q < total)) return resetPractice();
+    begin(s.mode, s.order, s.answers, s.index, s.elapsedSec);
   };
 
   const discardSession = async () => {
@@ -234,359 +243,501 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
     }
   };
 
-  const answeredCount = answers.filter((a) => a >= 0).length;
-  const result = useMemo(() => {
-    if (phase !== "result") return null;
-    let correct = 0;
-    const rows = order.map((qi, pos) => {
-      const chosen = answers[pos];
-      const q = questions[qi];
-      const ok = chosen === q.answer;
-      if (ok) correct++;
-      return { qi, q, chosen, ok };
+  // ---- interaction ---------------------------------------------------------
+  const choose = (opt: number) => {
+    if (phase !== "quiz") return;
+    if (mode === "practice" && answers[index] >= 0) return; // locked after answering
+    const isNew = answers[index] < 0;
+
+    if (visitor && isNew && freeUsed >= FREE_LIMIT) {
+      setGate(true);
+      return;
+    }
+
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[index] = opt;
+      stateRef.current = { ...stateRef.current, answers: next };
+      return next;
     });
-    const pct = order.length ? Math.round((correct / order.length) * 100) : 0;
-    return { rows, correct, pct };
-  }, [phase, order, answers, questions]);
+    scheduleSave();
 
-  // ======================================================================
-  // MENU
-  // ======================================================================
-  if (phase === "menu") {
-    const hasSession = !!progress?.session;
-    const missed = progress?.missed ?? [];
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm p-6 sm:p-8">
-          <div className="flex flex-wrap gap-2 mb-5">
-            <span className="px-3 py-1 rounded-full text-xs font-medium bg-teal/10 text-teal">{total} MCQs available</span>
-            <span className="px-3 py-1 rounded-full text-xs font-medium bg-teal/10 text-teal">Instant explanations</span>
-            {progress?.completed && (
-              <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 inline-flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Completed
-              </span>
-            )}
-            {progress && progress.attempts > 0 && (
-              <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                Best {progress.bestScore}% · {progress.attempts} attempt{progress.attempts === 1 ? "" : "s"}
-              </span>
-            )}
-          </div>
+    if (visitor && isNew) {
+      const n = freeUsed + 1;
+      setFreeUsed(n);
+      writeFree(n);
+      if (n >= FREE_LIMIT) setGate(true);
+    }
+  };
 
-          {loadingProgress && isSignedIn ? (
-            <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading your progress…
-            </div>
-          ) : null}
+  const go = (i: number) => {
+    setIndex(i);
+    stateRef.current = { ...stateRef.current, index: i };
+    scheduleSave();
+  };
 
-          {hasSession && progress?.session && (
-            <div className="mb-6 rounded-xl border border-teal/30 bg-teal/5 p-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-semibold text-gray-800 text-sm">Continue where you left off</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {progress.session.mode === "test" ? "Test" : "Practice"} · {progress.session.answers.filter((a) => a >= 0).length} of{" "}
-                  {progress.session.order.length} answered
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={resume} className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-teal text-white hover:bg-teal-dark transition-all">
-                  <PlayCircle className="w-4 h-4" /> Resume
-                </button>
-                <button onClick={discardSession} className="px-4 py-2 rounded-full text-sm font-medium border border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-500 transition-all">
-                  Discard
-                </button>
-              </div>
-            </div>
-          )}
+  const saveAndExit = async () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    try {
+      const data = await saveNow();
+      if (data) setProgress(data.progress);
+      toast.success("Progress saved. Pick up where you left off any time.");
+    } catch {
+      toast.error("Could not save. Try again.");
+      return;
+    }
+    resetPractice();
+  };
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-gray-200 p-5">
-              <div className="flex items-center gap-2 mb-1">
-                <Target className="w-5 h-5 text-teal" />
-                <h3 className="font-semibold text-gray-800">Practice mode</h3>
-              </div>
-              <p className="text-sm text-gray-500 mb-4">All {total} questions, no time limit. You see the answer and explanation straight after each question.</p>
-              <button onClick={startPractice} className="w-full px-4 py-2.5 rounded-full text-sm font-medium bg-teal text-white hover:bg-teal-dark transition-all">
-                Start practice
-              </button>
-            </div>
-
-            <div className="rounded-xl border border-gray-200 p-5">
-              <div className="flex items-center gap-2 mb-1">
-                <Timer className="w-5 h-5 text-teal" />
-                <h3 className="font-semibold text-gray-800">Test mode</h3>
-              </div>
-              <p className="text-sm text-gray-500 mb-3">Random questions against the clock ({SECONDS_PER_QUESTION}s each). Answers are shown at the end.</p>
-              <div className="flex gap-2">
-                <select
-                  value={testCount}
-                  onChange={(e) => setTestCount(parseInt(e.target.value, 10))}
-                  className="px-3 py-2.5 rounded-full text-sm bg-white border border-gray-200 text-gray-700 focus:outline-none focus:border-teal"
-                  aria-label="Number of questions"
-                >
-                  {[...TEST_SIZES.filter((n) => n < total), total].map((n) => (
-                    <option key={n} value={n}>
-                      {n} MCQs
-                    </option>
-                  ))}
-                </select>
-                <button onClick={startTest} className="flex-1 px-4 py-2.5 rounded-full text-sm font-medium bg-navy text-white hover:opacity-90 transition-all">
-                  Start test
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {missed.length > 0 && (
-            <button
-              onClick={() => retryMissed(missed)}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-all"
-            >
-              <RotateCcw className="w-4 h-4" /> Retry {missed.length} missed question{missed.length === 1 ? "" : "s"} from last attempt
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link href={backHref} className="text-sm text-gray-600 hover:text-teal transition-colors">
-            ← Back to units
-          </Link>
-          {isLoaded && isSignedIn ? (
-            <button
-              onClick={toggleComplete}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                progress?.completed ? "bg-green-50 text-green-700 border-green-200" : "bg-white text-gray-700 border-gray-200 hover:border-teal/40 hover:text-teal"
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              {progress?.completed ? "Completed — click to undo" : "Mark as completed"}
-            </button>
-          ) : isLoaded ? (
-            <p className="text-xs text-gray-500">Sign in to save your progress, streak and completed units.</p>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
-  // ======================================================================
-  // RESULT
-  // ======================================================================
-  if (phase === "result" && result) {
-    const msg = result.pct >= 80 ? "Excellent work!" : result.pct >= 60 ? "Good job — keep going." : "Keep practising — review the explanations below.";
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div
-              className="w-32 h-32 rounded-full grid place-items-center shrink-0"
-              style={{ background: `conic-gradient(#14b8a6 ${result.pct * 3.6}deg, rgba(148,163,184,.25) 0deg)` }}
-              role="img"
-              aria-label={`Score ${result.pct} percent`}
-            >
-              <div className="w-24 h-24 rounded-full bg-white grid place-items-center">
-                <span className="text-2xl font-bold text-gray-800">{result.pct}%</span>
-              </div>
-            </div>
-            <div className="text-center sm:text-left">
-              <h2 className="text-xl font-bold text-gray-800">{msg}</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                {unitName} · {mode === "test" ? "Test" : "Practice"}
-              </p>
-              <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-3 text-xs font-medium">
-                <span className="px-3 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">{result.correct} correct</span>
-                <span className="px-3 py-1 rounded-full bg-red-50 text-red-600 border border-red-200">{order.length - result.correct - result.rows.filter((r) => r.chosen < 0).length} wrong</span>
-                <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600">{result.rows.filter((r) => r.chosen < 0).length} skipped</span>
-                <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 inline-flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {fmt(elapsed)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-6">
-            {missedNow.length > 0 && (
-              <button onClick={() => retryMissed(missedNow)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-teal text-white hover:bg-teal-dark transition-all">
-                <RotateCcw className="w-4 h-4" /> Retry {missedNow.length} missed
-              </button>
-            )}
-            <button onClick={mode === "test" ? startTest : startPractice} className="px-4 py-2 rounded-full text-sm font-medium border border-gray-200 text-gray-700 hover:border-teal/40 hover:text-teal transition-all">
-              {mode === "test" ? "New test" : "Practise again"}
-            </button>
-            <button onClick={() => setPhase("menu")} className="px-4 py-2 rounded-full text-sm font-medium border border-gray-200 text-gray-700 hover:border-teal/40 hover:text-teal transition-all">
-              Back to menu
-            </button>
-            {isSignedIn && (
-              <button
-                onClick={toggleComplete}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                  progress?.completed ? "bg-green-50 text-green-700 border-green-200" : "border-gray-200 text-gray-700 hover:border-teal/40 hover:text-teal"
-                }`}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {progress?.completed ? "Completed" : "Mark as completed"}
-              </button>
-            )}
-          </div>
-          {!isSignedIn && <p className="text-xs text-gray-500 mt-4">Sign in to save results, track your streak and use &ldquo;retry missed&rdquo; later.</p>}
-        </div>
-
-        <div className="space-y-3">
-          <h3 className="font-semibold text-gray-800">Review</h3>
-          {result.rows.map((r, i) => (
-            <div key={`${r.qi}-${i}`} className="bg-white rounded-2xl shadow-sm p-5">
-              <div className="flex items-start gap-3">
-                {r.chosen < 0 ? (
-                  <Flag className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
-                ) : r.ok ? (
-                  <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-gray-800 wrap-break-word">
-                    {i + 1}. {r.q.q}
-                  </p>
-                  <p className="text-sm mt-2 text-gray-600 wrap-break-word">
-                    Your answer:{" "}
-                    <span className={r.chosen < 0 ? "text-gray-400" : r.ok ? "text-green-700 font-medium" : "text-red-600 font-medium"}>
-                      {r.chosen < 0 ? "Not answered" : `${LETTERS[r.chosen]}. ${r.q.options[r.chosen]}`}
-                    </span>
-                  </p>
-                  {!r.ok && (
-                    <p className="text-sm mt-1 text-gray-600 wrap-break-word">
-                      Correct answer: <span className="text-green-700 font-medium">{LETTERS[r.q.answer]}. {r.q.options[r.q.answer]}</span>
-                    </p>
-                  )}
-                  {r.q.explanation && <p className="text-sm mt-2 text-gray-500 wrap-break-word">{r.q.explanation}</p>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // ======================================================================
-  // QUIZ
-  // ======================================================================
-  const q = questions[order[index]];
-  const chosen = answers[index];
-  const revealed = mode === "practice" && chosen >= 0;
-  const remaining = limit - elapsed;
-  const pct = order.length ? Math.round(((index + 1) / order.length) * 100) : 0;
-  const isLast = index === order.length - 1;
+  const toggleComplete = async () => {
+    if (!isSignedIn) return toast.error("Sign in to track your progress");
+    const next = !progress?.completed;
+    try {
+      const data = await put({ action: "complete", completed: next });
+      setProgress((p) => ({ ...(p ?? {}), ...data.progress }));
+      toast.success(next ? "Marked as completed" : "Marked as not completed");
+    } catch {
+      toast.error("Could not update. Try again.");
+    }
+  };
 
   const confirmFinish = () => {
-    const unanswered = order.length - answeredCount;
+    const unanswered = answers.filter((a) => a < 0).length;
     if (unanswered > 0 && !window.confirm(`${unanswered} question${unanswered === 1 ? " is" : "s are"} unanswered. Submit anyway?`)) return;
     void finish();
   };
 
-  const optionClass = (i: number) => {
-    const base = "w-full text-left flex items-start gap-3 px-4 py-3 rounded-xl border text-sm transition-all ";
-    if (revealed) {
-      if (i === q.answer) return base + "border-green-300 bg-green-50 text-green-800";
-      if (i === chosen) return base + "border-red-300 bg-red-50 text-red-700";
-      return base + "border-gray-200 text-gray-500 opacity-70";
-    }
-    if (mode === "test" && i === chosen) return base + "border-teal bg-teal/10 text-gray-800";
-    return base + "border-gray-200 bg-white text-gray-700 hover:border-teal/50 hover:bg-teal/5";
-  };
+  // ---- derived -------------------------------------------------------------
+  const answeredCount = answers.filter((a) => a >= 0).length;
+  const correctCount = order.reduce((sum, qi, pos) => sum + (answers[pos] === questions[qi]?.answer ? 1 : 0), 0);
+  const livePercent = answeredCount ? Math.round((correctCount / answeredCount) * 100) : 0;
+  const hideScore = mode === "test" && phase === "quiz";
+  const savedSession = progress?.session;
+  const showResume = !!savedSession && phase === "quiz" && answeredCount === 0 && !(mode === "test");
 
-  return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-2xl shadow-sm p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <p className="text-sm font-medium text-gray-700">
-            Question {index + 1} of {order.length}
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 inline-flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {mode === "test" ? `${fmt(remaining)} left` : fmt(elapsed)}
-            </span>
-            <span className="px-3 py-1 rounded-full text-xs font-medium bg-teal/10 text-teal">{mode === "test" ? "Test" : "Instant feedback"}</span>
+  const authQuery = `?redirect_url=${encodeURIComponent(pathname || "/mcqs")}`;
+
+  // ======================================================================
+  // main panel
+  // ======================================================================
+  let main: React.ReactNode;
+
+  if (phase === "setup") {
+    main = (
+      <div className="test-setup">
+        <div className="test-setup-icon">✓</div>
+        <h2>Set up your test</h2>
+        <p>Choose how many {unitName} MCQs you want to attempt. You get 1.5 minutes per MCQ.</p>
+        <div className="test-setup-form">
+          <label className="test-setup-label" htmlFor="mcqp-test-count">
+            Number of MCQs
+          </label>
+          <select id="mcqp-test-count" className="test-count-select" value={testSize} onChange={(e) => setTestSize(Number(e.target.value))}>
+            {testOptions.map((n) => (
+              <option key={n} value={n}>
+                {n} MCQs
+              </option>
+            ))}
+          </select>
+          <div className="test-setup-actions">
+            <button className="btn btn-primary" type="button" onClick={startTest}>
+              Start Test
+            </button>
           </div>
         </div>
-        <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-          <div className="h-full bg-teal transition-all" style={{ width: `${pct}%` }} />
+      </div>
+    );
+  } else if (phase === "result") {
+    const unanswered = answers.filter((a) => a < 0).length;
+    const incorrect = order.length - correctCount - unanswered;
+    const percent = order.length ? Math.round((correctCount / order.length) * 100) : 0;
+    main = (
+      <div className="result">
+        <div className="result-ring" data-score={`${percent}%`} style={{ "--score": `${percent * 3.6}deg` } as React.CSSProperties} />
+        <h2>{mode === "test" ? "Test complete" : "Practice complete"}</h2>
+        <p>
+          Here is your {unitName} result for {order.length} MCQs{mode === "test" ? ` · ${formatTime(elapsed)} used` : ""}.
+        </p>
+        <div className="result-stats">
+          <div className="result-stat">
+            <strong>{correctCount}</strong>
+            <span>Correct</span>
+          </div>
+          <div className="result-stat">
+            <strong>{incorrect}</strong>
+            <span>Incorrect</span>
+          </div>
+          <div className="result-stat">
+            <strong>{unanswered}</strong>
+            <span>Unanswered</span>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-1.5 mt-4" role="navigation" aria-label="Question palette">
-          {order.map((qi, pos) => {
-            const a = answers[pos];
-            let cls = "bg-white text-gray-600 border-gray-200";
-            if (a >= 0) {
-              if (mode === "practice") cls = a === questions[qi].answer ? "bg-green-50 text-green-700 border-green-300" : "bg-red-50 text-red-600 border-red-300";
-              else cls = "bg-teal/10 text-teal border-teal/40";
-            }
-            if (pos === index) cls += " ring-2 ring-teal";
+        <div className="result-actions">
+          <button className="btn btn-primary" type="button" onClick={() => setPhase("review")}>
+            Review with explanations
+          </button>
+          {missedNow.length > 0 && (
+            <button className="btn btn-secondary" type="button" onClick={() => retryMissed(missedNow)}>
+              Retry {missedNow.length} missed
+            </button>
+          )}
+          <button className="btn btn-secondary" type="button" onClick={() => (mode === "test" ? goTestSetup() : resetPractice())}>
+            {mode === "test" ? "Retake test" : "Practise again"}
+          </button>
+          {isSignedIn && (
+            <button className={`btn ${progress?.completed ? "btn-done" : "btn-secondary"}`} type="button" onClick={toggleComplete}>
+              {progress?.completed ? "✓ Completed" : "Mark as completed"}
+            </button>
+          )}
+        </div>
+        {visitor && <p className="notice">Create a free account to save results, keep a streak and use “retry missed” later.</p>}
+      </div>
+    );
+  } else if (phase === "review") {
+    main = (
+      <div className="question">
+        <div className="q-top">
+          <div className="q-label">
+            <span className="q-number">✓</span>
+            Review
+          </div>
+          <button className="btn btn-secondary" type="button" onClick={() => setPhase("result")}>
+            Back to result
+          </button>
+        </div>
+        <div className="review-list">
+          {order.map((qi, i) => {
+            const q = questions[qi];
+            const sel = answers[i];
+            const unanswered = sel < 0;
+            const good = sel === q.answer;
             return (
-              <button key={pos} onClick={() => go(pos)} className={`w-8 h-8 rounded-full border text-xs font-medium ${cls}`} aria-label={`Go to question ${pos + 1}`}>
-                {pos + 1}
-              </button>
+              <article className="review-item" key={`${qi}-${i}`}>
+                <div className={`review-badge ${unanswered ? "empty" : good ? "good" : "bad"}`}>
+                  {unanswered ? "Not answered" : good ? "Correct" : "Incorrect"}
+                </div>
+                <div className="review-q">
+                  {i + 1}. {q.q}
+                </div>
+                <div className="review-answer">
+                  <strong>Your answer:</strong> {unanswered ? "No answer" : `${LETTERS[sel]} — ${q.options[sel]}`}
+                </div>
+                <div className="review-answer">
+                  <strong>Correct answer:</strong> {LETTERS[q.answer]} — {q.options[q.answer]}
+                </div>
+                {q.explanation && (
+                  <div className="review-explanation">
+                    <strong>Explanation:</strong> {q.explanation}
+                  </div>
+                )}
+              </article>
             );
           })}
         </div>
       </div>
+    );
+  } else {
+    // running question
+    const q = questions[order[index]];
+    const selected = answers[index];
+    const checked = mode === "practice" && selected >= 0;
+    const pct = Math.round(((index + 1) / order.length) * 100);
+    const last = index === order.length - 1;
 
-      <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-7">
-        <h2 className="text-base sm:text-lg font-semibold text-gray-800 wrap-break-word">{q.q}</h2>
-        <div className="mt-5 space-y-2.5">
-          {q.options.map((opt, i) => (
-            <button key={i} onClick={() => choose(i)} disabled={revealed} className={optionClass(i)}>
-              <span className="font-semibold shrink-0">{LETTERS[i]}.</span>
-              <span className="wrap-break-word min-w-0">{opt}</span>
-            </button>
-          ))}
-        </div>
-
-        {revealed && (
-          <div className={`mt-5 rounded-xl border p-4 text-sm ${chosen === q.answer ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-700"}`}>
-            <p className="font-semibold">{chosen === q.answer ? "Correct!" : `Incorrect — the answer is ${LETTERS[q.answer]}.`}</p>
-            {q.explanation && <p className="mt-1 opacity-90 wrap-break-word">{q.explanation}</p>}
+    main = (
+      <>
+        <div className="progress-wrap">
+          <div className="progress-head">
+            <span className="progress-text">
+              Question {index + 1} of {order.length}
+            </span>
+            <span className="progress-value">{pct}%</span>
           </div>
-        )}
-      </div>
+          <div className="progress">
+            <span style={{ width: `${pct}%` }} />
+          </div>
+        </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <button
-          onClick={() => go(Math.max(0, index - 1))}
-          disabled={index === 0}
-          className="inline-flex items-center gap-1 px-4 py-2 rounded-full text-sm font-medium border border-gray-200 text-gray-700 hover:border-teal/40 hover:text-teal disabled:opacity-40 disabled:pointer-events-none transition-all"
-        >
-          <ChevronLeft className="w-4 h-4" /> Previous
-        </button>
+        <div className="question">
+          <div className="q-top">
+            <div className="q-label">
+              <span className="q-number">{index + 1}</span>
+              {mode === "practice" ? "Practice question" : "Test question"}
+            </div>
+            {mode === "test" ? (
+              <div className={`timer ${remaining <= 60 ? "danger" : remaining <= 180 ? "warning" : ""}`}>◷ {formatTime(remaining)}</div>
+            ) : (
+              <div className="timer" style={{ background: "#f1f5f9", color: "#64748b" }}>
+                Instant feedback
+              </div>
+            )}
+          </div>
 
-        <div className="flex gap-2">
-          {mode === "practice" && (
-            <button
-              onClick={() => {
-                if (saveTimer.current) clearTimeout(saveTimer.current);
-                if (isSignedIn) scheduleSave();
-                toast.success(isSignedIn ? "Progress saved" : "Sign in to save progress");
-                setPhase("menu");
-                if (isSignedIn) setProgress((p) => ({ ...(p ?? ({} as SavedProgress)), session: { mode, order, answers, index, elapsedSec: elapsed } }));
-              }}
-              className="px-4 py-2 rounded-full text-sm font-medium border border-gray-200 text-gray-700 hover:border-teal/40 hover:text-teal transition-all"
-            >
-              Save &amp; exit
-            </button>
-          )}
-          {isLast || mode === "test" ? (
-            <button onClick={confirmFinish} disabled={finishing} className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium bg-teal text-white hover:bg-teal-dark disabled:opacity-60 transition-all">
-              {finishing && <Loader2 className="w-4 h-4 animate-spin" />}
-              {mode === "test" ? "Submit test" : "Finish"}
-            </button>
-          ) : null}
-          {!isLast && (
-            <button onClick={() => go(index + 1)} className="inline-flex items-center gap-1 px-4 py-2 rounded-full text-sm font-medium bg-teal text-white hover:bg-teal-dark transition-all">
-              Next <ChevronRight className="w-4 h-4" />
-            </button>
+          <h2>{q.q}</h2>
+
+          <div className="options">
+            {q.options.map((text, i) => {
+              let cls = "option";
+              if (selected === i) cls += " selected";
+              if (checked && i === q.answer) cls += " correct";
+              if (checked && selected === i && i !== q.answer) cls += " incorrect";
+              return (
+                <button key={i} className={cls} type="button" disabled={checked} onClick={() => choose(i)}>
+                  <span className="option-key">{LETTERS[i]}</span>
+                  <span className="option-text">{text}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {checked && (
+            <div className={`feedback ${selected === q.answer ? "correct" : "incorrect"}`}>
+              <div className="feedback-head">{selected === q.answer ? "✓ Correct" : "✕ Incorrect"}</div>
+              {q.explanation && (
+                <p>
+                  <strong>Explanation:</strong> {q.explanation}
+                </p>
+              )}
+            </div>
           )}
         </div>
+
+        <div className="controls">
+          <button className="btn btn-secondary" type="button" disabled={index === 0} onClick={() => go(Math.max(0, index - 1))}>
+            ← Previous
+          </button>
+          <div className="controls-right">
+            {isSignedIn && (
+              <button className="btn btn-ghost" type="button" onClick={saveAndExit}>
+                Save &amp; exit
+              </button>
+            )}
+            {mode === "test" && !last && (
+              <button className="btn btn-danger" type="button" disabled={finishing} onClick={confirmFinish}>
+                Submit
+              </button>
+            )}
+            {last ? (
+              <button
+                className={`btn ${mode === "test" ? "btn-danger" : "btn-primary"}`}
+                type="button"
+                disabled={finishing}
+                onClick={mode === "test" ? confirmFinish : () => void finish()}
+              >
+                {mode === "test" ? "Submit Test" : "Finish Practice"}
+              </button>
+            ) : (
+              <button className="btn btn-primary" type="button" onClick={() => go(index + 1)}>
+                Next →
+              </button>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ======================================================================
+  // page
+  // ======================================================================
+  const timerChip = mode === "test" && (phase === "quiz" || phase === "result" || phase === "review") ? `${order.length * 1.5} minutes` : "No timer";
+  const modeChip = mode === "test" ? (phase === "setup" ? "Choose test size" : `${order.length}-question timed test`) : "Instant explanations";
+
+  return (
+    <div className="mcqp">
+      <div className="toolbar">
+        <div className="mode-switch" role="tablist" aria-label="Quiz mode">
+          <button className={`mode-btn ${mode === "practice" ? "active" : ""}`} type="button" onClick={resetPractice}>
+            Practice
+          </button>
+          <button className={`mode-btn ${mode === "test" ? "active" : ""}`} type="button" onClick={goTestSetup}>
+            Test Mode
+          </button>
+        </div>
+        <div className="chips">
+          <span className="chip">{total} MCQs available</span>
+          <span className="chip">{modeChip}</span>
+          <span className="chip">{timerChip}</span>
+          {progress?.completed && <span className="chip done">✓ Completed</span>}
+        </div>
       </div>
+
+      {showResume && savedSession && (
+        <div className="resume-card">
+          <div>
+            <strong>Continue where you left off</strong>
+            <span>
+              {savedSession.mode === "test" ? "Test" : "Practice"} · {savedSession.answers.filter((a) => a >= 0).length} of{" "}
+              {savedSession.order.length} answered
+            </span>
+          </div>
+          <div className="controls-right">
+            <button className="btn btn-primary" type="button" onClick={resume}>
+              Resume
+            </button>
+            <button className="btn btn-ghost" type="button" onClick={discardSession}>
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="layout">
+        <section className="card main-card">{main}</section>
+
+        <aside className="sidebar">
+          <div className="card side-card">
+            <h3 className="side-title">Session progress</h3>
+            <div className="side-stats">
+              <div className="stat">
+                <div className="value">{answeredCount}</div>
+                <div className="label">Answered</div>
+              </div>
+              <div className="stat">
+                <div className="value">{hideScore ? "—" : `${livePercent}%`}</div>
+                <div className="label">{hideScore ? "Score after test" : "Current score"}</div>
+              </div>
+            </div>
+          </div>
+
+          {phase === "setup" && (
+            <div className="card side-card">
+              <h3 className="side-title">Test settings</h3>
+              <label className="test-setup-label" htmlFor="mcqp-test-count-side">
+                Number of MCQs
+              </label>
+              <select id="mcqp-test-count-side" className="test-count-select" value={testSize} onChange={(e) => setTestSize(Number(e.target.value))}>
+                {testOptions.map((n) => (
+                  <option key={n} value={n}>
+                    {n} MCQs
+                  </option>
+                ))}
+              </select>
+              <button className="btn btn-primary btn-block" type="button" style={{ marginTop: 10 }} onClick={startTest}>
+                Start Test
+              </button>
+            </div>
+          )}
+
+          <div className="card side-card">
+            <h3 className="side-title">Questions</h3>
+            <div className="palette">
+              {order.map((qi, pos) => {
+                const a = answers[pos];
+                let cls = "q-pill";
+                if (mode === "practice" && a >= 0) cls += a === questions[qi].answer ? " correct" : " incorrect";
+                else if (mode === "test" && phase === "quiz" && a >= 0) cls += " answered";
+                else if (phase !== "quiz" && a >= 0) cls += a === questions[qi].answer ? " correct" : " incorrect";
+                if (pos === index && phase === "quiz") cls += " current";
+                return (
+                  <button
+                    key={pos}
+                    className={cls}
+                    type="button"
+                    onClick={() => {
+                      if (phase === "result" || phase === "review") return;
+                      go(pos);
+                    }}
+                  >
+                    {pos + 1}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="legend">
+              <div className="legend-row">
+                <span>Current</span>
+                <span className="legend-key current" />
+              </div>
+              <div className="legend-row">
+                <span>Answered</span>
+                <span className="legend-key answered" />
+              </div>
+              <div className="legend-row">
+                <span>Correct</span>
+                <span className="legend-key correct" />
+              </div>
+              <div className="legend-row">
+                <span>Incorrect</span>
+                <span className="legend-key incorrect" />
+              </div>
+            </div>
+          </div>
+
+          <div className="card side-card">
+            <h3 className="side-title">My progress</h3>
+            {isSignedIn ? (
+              <div className="progress-kpi">
+                <span>
+                  Best score: <strong>{progress?.attempts ? `${progress.bestScore}%` : "—"}</strong>
+                </span>
+                <span>
+                  Attempts: <strong>{progress?.attempts ?? 0}</strong>
+                </span>
+                <button className={`btn btn-block ${progress?.completed ? "btn-done" : "btn-secondary"}`} type="button" onClick={toggleComplete}>
+                  {progress?.completed ? "✓ Completed — undo" : "Mark as completed"}
+                </button>
+                {(progress?.missed?.length ?? 0) > 0 && phase !== "result" && (
+                  <button className="btn btn-secondary btn-block" type="button" onClick={() => retryMissed(progress?.missed ?? [])}>
+                    Retry {progress?.missed?.length} missed
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="progress-kpi">
+                <span>
+                  Free answers: <strong>{Math.min(freeUsed, FREE_LIMIT)} / {FREE_LIMIT}</strong>
+                </span>
+                <Link className="btn btn-primary btn-block" href={`/sign-up${authQuery}`}>
+                  Create free account
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <div className="card side-card">
+            <h3 className="side-title">Mode</h3>
+            <p className="notice" style={{ margin: 0, textAlign: "left" }}>
+              {mode === "test"
+                ? phase === "setup"
+                  ? "Choose the number of MCQs, then start the timed test."
+                  : "Test Mode hides the score and explanations until you submit."
+                : "Practice shows the correct answer and explanation as soon as you answer."}
+            </p>
+            <p className="notice" style={{ margin: "10px 0 0", textAlign: "left" }}>
+              <Link href={backHref} style={{ color: "var(--teal-dark)" }}>
+                ← Back to units
+              </Link>
+            </p>
+          </div>
+        </aside>
+      </div>
+
+      {gate && (
+        <div className="gate-backdrop" role="dialog" aria-modal="true" aria-label="Create a free account">
+          <div className="gate">
+            <div style={{ fontSize: 34 }}>🎉</div>
+            <h3>Nice work — 10 MCQs solved!</h3>
+            <p>Create a free account to keep going. It only takes a few seconds.</p>
+            <ul>
+              <li>Unlock all MCQs</li>
+              <li>Save your progress and resume anytime</li>
+              <li>Track your record, streak and completed units in your profile</li>
+            </ul>
+            <div className="gate-actions">
+              <Link className="btn btn-primary" href={`/sign-up${authQuery}`}>
+                Create free account
+              </Link>
+              <Link className="btn btn-secondary" href={`/sign-in${authQuery}`}>
+                I already have an account
+              </Link>
+              <button className="btn btn-ghost" type="button" onClick={() => setGate(false)}>
+                Maybe later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

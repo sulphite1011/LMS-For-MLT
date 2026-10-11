@@ -857,3 +857,10 @@ Cross-checked against the repository: 25 route handler files (documented in §14
 - **Player** (`components/mcq/McqPlayer.tsx`): Practice (instant feedback), Test (random N questions, 60 s each, auto-submit), palette, review, "retry missed", save & exit, resume.
 - **Progress** (`models/McqProgress.ts`, `models/McqStudyDay.ts`, `/api/mcq/progress`, `/api/mcq/progress/summary`): per-user saved session, best score, attempts, missed questions and completion. The server scores finished attempts itself. Streak = consecutive days (Asia/Karachi) with answers, computed by `lib/mcqProgress.ts`. The dashboard shows `StudyProgress`.
 - Correct answers are sent to the browser (needed for instant feedback), so Test mode is not cheat-proof.
+
+## MCQ player (template-based), visitor gate and notification inbox
+
+- `components/mcq/McqPlayer.tsx` + `mcq-player.css` port the Hematology-III master template (Practice / Test mode, live practice score, hidden test score, 1.5 min per MCQ timer, palette, result, review) and add saved progress, Save & exit, Resume, Retry missed and Mark as completed. Styles are scoped to `.mcqp` and follow the site's `html.dark` class.
+- Visitors can answer 10 MCQs in total (counter in localStorage `mcq-free-answers`); then a friendly prompt asks them to create a free account (`/sign-up`) or sign in.
+- Upload `.html` (with `const QUESTIONS = [...]`), `.json`, or a JS data file. Same keys: `q`, `options`, `answer` (0-based), `explanation`.
+- Notifications: students can archive, unarchive and delete (their own view only) via `PATCH /api/notifications/[id]` (`models/NotificationState.ts`). Admins delete for everyone (`DELETE /api/notifications/manage/[id]`). Notifications expire after 60 days (TTL index). `GET /api/notifications` is computed from the user's current semester settings, so switching semester swaps the list; new accounts see the last 60 days plus a first "Set up your notifications" item until a semester is chosen. Visitors get no notifications (the bell is hidden and the API returns 401).

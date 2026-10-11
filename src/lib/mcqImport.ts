@@ -252,9 +252,12 @@ function extractFromScripts(html: string): NormalizedQuestion[] {
   let m: RegExpExecArray | null;
   let best: NormalizedQuestion[] = [];
 
-  while ((m = re.exec(html))) {
-    const attrs = m[1] || "";
-    const body = m[2] || "";
+  // A plain .js / .txt data file (no <script> tags): scan the whole text as one script body.
+  const blocks: { attrs: string; body: string }[] = [];
+  while ((m = re.exec(html))) blocks.push({ attrs: m[1] || "", body: m[2] || "" });
+  if (!blocks.length && !/<\s*(!doctype|html|body|head)\b/i.test(html)) blocks.push({ attrs: "", body: html });
+
+  for (const { attrs, body } of blocks) {
     if (!body.trim()) continue;
 
     if (/type\s*=\s*["']?application\/(ld\+)?json/i.test(attrs)) {
@@ -288,7 +291,12 @@ export interface ImportResult {
 export function importQuestions(text: string): ImportResult {
   const trimmed = text.trim();
   if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
-    const parsed = tryParse(trimmed);
+    let parsed = tryParse(trimmed);
+    if (parsed === undefined) {
+      // JS-style literal (unquoted keys, single quotes, trailing commas)
+      const asJson = literalToJson(trimmed.replace(/;\s*$/, ""));
+      if (asJson) parsed = tryParse(asJson);
+    }
     if (parsed !== undefined) {
       const questions = normalizeList(parsed);
       if (questions.length) return { source: "json", questions };
@@ -303,4 +311,9 @@ export function importQuestions(text: string): ImportResult {
 export function looksLikeJson(text: string): boolean {
   const t = text.trim();
   return (t.startsWith("[") || t.startsWith("{")) && tryParse(t) !== undefined;
+}
+
+/** True when the text is a pure data file (JSON / JS literal / `const QUESTIONS = [...]`) rather than an HTML page. */
+export function isDataFile(text: string): boolean {
+  return looksLikeJson(text) || !/<\s*(!doctype|html|body|head|script|div|main|section)\b/i.test(text);
 }

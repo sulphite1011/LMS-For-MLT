@@ -353,7 +353,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Tab Nav */}
-      <div className="sticky top-16 z-30 bg-white border-b border-slate-200 shadow-sm">
+      <div className="bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <nav className="flex gap-1 overflow-x-auto hide-scrollbar">
             {TABS.map(tab => (

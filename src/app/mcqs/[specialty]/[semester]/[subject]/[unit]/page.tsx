@@ -66,7 +66,7 @@ export default async function UnitMcqPage({ params }: Props) {
         shareText={`${unit.name} MCQs — ${subject.name}, ${specialty.name} ${ordinal(semester)} semester`}
       />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <Link
             href={subjectPath}

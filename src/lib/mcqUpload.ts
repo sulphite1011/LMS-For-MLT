@@ -1,5 +1,5 @@
 import { MCQ_HTML_MAX_BYTES, validateHtmlText } from "@/lib/mcq";
-import { importQuestions, looksLikeJson } from "@/lib/mcqImport";
+import { importQuestions, isDataFile } from "@/lib/mcqImport";
 
 export interface UploadPatch {
   htmlContent: string | undefined;
@@ -22,13 +22,13 @@ export async function processMcqUpload(file: File): Promise<UploadOutcome> {
   if (file.size > MCQ_HTML_MAX_BYTES) return { ok: false, error: "File is too large (max 4 MB)" };
   const text = await file.text();
 
-  if (looksLikeJson(text)) {
+  if (isDataFile(text)) {
     const result = importQuestions(text);
     if (!result.questions.length) {
       return {
         ok: false,
         error:
-          'No valid questions found. Each question needs a question text, 2-8 options and a correct answer (e.g. {"q":"…","options":["…","…"],"answer":0}).',
+          'No valid questions found in this data file. Each question needs a question text, 2-8 options and a correct answer (e.g. {"q":"…","options":["…","…"],"answer":0}).',
       };
     }
     return {
