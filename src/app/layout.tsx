@@ -16,7 +16,10 @@ const inter = Inter({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#14b8a6",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#14b8a6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
+  ],
 };
 
 // NOTE: Do NOT add `export const dynamic = "force-dynamic"` here.
@@ -95,8 +98,15 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <head>
+          {/* Applies the saved/OS theme before first paint so there is no light flash in dark mode. */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html:
+                "try{var t=localStorage.getItem('theme');if(t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}",
+            }}
+          />
           {/* Preconnect to external origins to reduce connection latency */}
           <link rel="preconnect" href="https://clerk.com" />
           <link rel="dns-prefetch" href="https://clerk.com" />

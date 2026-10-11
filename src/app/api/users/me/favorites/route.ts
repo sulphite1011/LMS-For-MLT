@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import Resource from "@/models/Resource";
+import "@/models/Subject"; // registers the model used by populate("subjectId")
 import mongoose from "mongoose";
 import { getAuthUser } from "@/lib/auth";
 import { getBannerUrlMap, applyBannerUrls } from "@/lib/banner";
@@ -22,12 +23,12 @@ export async function GET() {
     if (!user) return NextResponse.json({ favorites: [], liked: [] });
 
     const [favorites, liked] = await Promise.all([
-      Resource.find({ _id: { $in: user.favoriteResources } })
-        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl")
+      Resource.find({ _id: { $in: user.favoriteResources }, deletedAt: null })
+        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl -formerOwnerId -formerOwnerName")
         .populate("subjectId", "name")
         .lean(),
-      Resource.find({ _id: { $in: user.likedResources } })
-        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl")
+      Resource.find({ _id: { $in: user.likedResources }, deletedAt: null })
+        .select("-fileData.fileContent -bannerImageData -files.fileContent -bannerImageUrl -formerOwnerId -formerOwnerName")
         .populate("subjectId", "name")
         .lean(),
     ]);

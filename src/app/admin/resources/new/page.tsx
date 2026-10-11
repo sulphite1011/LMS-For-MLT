@@ -10,6 +10,7 @@ import {
   Youtube, ArrowLeft, Check, Loader2, Globe, ChevronDown,
 } from "lucide-react";
 import { getYoutubeThumbnail } from "@/lib/utils";
+import { SEMESTERS } from "@/lib/semesters";
 
 const resourceTypes = ["Notes", "Video", "PDF", "Reference", "Quiz"] as const;
 
@@ -28,6 +29,8 @@ export default function NewResourcePage() {
   const [subjectName, setSubjectName] = useState(""); // for display
   const [resourceType, setResourceType] = useState("");
   const [description, setDescription] = useState("");
+  const [semester, setSemester] = useState("");
+  const [notifyStudents, setNotifyStudents] = useState(true);
   const [youtubeUrls, setYoutubeUrls] = useState<string[]>([""]);
   const [bannerImageUrl, setBannerImageUrl] = useState("");
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -98,6 +101,8 @@ export default function NewResourcePage() {
       formData.append("subjectName", subjectName);
       formData.append("resourceType", resourceType);
       formData.append("description", description);
+      formData.append("semester", semester);
+      formData.append("notify", notifyStudents ? "true" : "false");
       formData.append("youtubeUrls", JSON.stringify(youtubeUrls.filter(Boolean)));
       formData.append("bannerImageUrl", bannerImageUrl);
       if (bannerFile) formData.append("bannerImage", bannerFile);
@@ -186,6 +191,22 @@ export default function NewResourcePage() {
                 {resourceTypes.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Semester (optional)</label>
+              <select value={semester} onChange={e => setSemester(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none text-sm bg-white">
+                <option value="">All semesters / general</option>
+                {SEMESTERS.map(n => <option key={n} value={n}>Semester {n}</option>)}
+              </select>
+            </div>
+            <label className="flex items-start gap-3 text-sm text-gray-700 sm:mt-7 cursor-pointer">
+              <input type="checkbox" checked={notifyStudents} onChange={e => setNotifyStudents(e.target.checked)} className="mt-0.5 w-4 h-4 accent-teal" />
+              <span>
+                Notify students
+                <span className="block text-xs text-gray-400">{semester ? `Only Semester ${semester} students (and anyone following it) are notified.` : "No semester chosen: all students are notified."}</span>
+              </span>
+            </label>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>

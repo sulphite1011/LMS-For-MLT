@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getBannerUrlMap, isOwnBannerRoute } from "@/lib/banner";
 import { fetchResourceDetail } from "@/lib/resources";
 import { revalidatePath } from "next/cache";
+import { parseSemesterValue } from "@/lib/semesters";
 
 export async function GET(
   _req: NextRequest,
@@ -81,6 +82,9 @@ export async function PUT(
       { upsert: true, new: true }
     );
 
+    const semesterField = formData.get("semester");
+    const semester = parseSemesterValue(semesterField);
+
     const updateData: Record<string, unknown> = {
       title: title.trim(),
       subjectId: subject._id,
@@ -88,6 +92,10 @@ export async function PUT(
       description: description?.trim() || "",
       youtubeUrls,
     };
+
+    // Semester: a number sets it, an empty value (field present) clears it, a missing field leaves it as is.
+    if (semester) updateData.semester = semester;
+    else if (semesterField !== null) updateData.$unset = { semester: "" };
 
     // The edit form echoes back the banner URL it received from GET. For uploaded banners that is
     // this app's own /banner route, which must never overwrite the stored image data.
@@ -165,12 +173,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
     const { id } = await params;
 
     await dbConnect();
 
-    const resource = await Resource.findByIdAndDelete(id);
+    // Soft delete: the resource moves to the recycle bin and is removed for good after 30 days
+    // (see lib/recycleBin.ts). It disappears from every public page and API immediately.
+    const resource = await Resource.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { $set: { deletedAt: new Date(), deletedBy: user._id } },
+      { new: true }
+    ).select("_id");
     if (!resource) {
       return NextResponse.json(
         { error: "Resource not found" },
@@ -181,7 +195,7 @@ export async function DELETE(
     revalidatePath("/");
     revalidatePath(`/resource/${id}`);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, recycled: true });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Failed to delete resource";

@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Plus, Pencil, Trash2, FileText, Eye, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Eye, Star, RotateCcw, Archive } from "lucide-react";
 import toast from "react-hot-toast";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { useAuthState } from "@/contexts/AuthContext";
 import { RESOURCE_TYPE_BG, type ResourceType } from "@/types";
+import { formatDateTime } from "@/lib/utils";
 
 interface Resource {
   _id: string;
@@ -18,17 +20,51 @@ interface Resource {
   fileData?: { fileType: string };
   averageRating?: number | string;
   totalRatings?: number;
+  isOrphaned?: boolean;
+  formerOwnerName?: string;
+  authorName?: string;
+}
+
+interface TrashItem {
+  _id: string;
+  title: string;
+  resourceType: ResourceType;
+  subjectId?: { name: string } | null;
+  createdAt: string;
+  deletedAt: string;
+  daysLeft: number;
+  isOrphaned: boolean;
+  authorName: string;
+  deletedByName?: string;
+  formerOwnerName?: string;
+}
+
+interface AdminOption {
+  _id: string;
+  username: string;
 }
 
 export default function ResourcesPage() {
+  const { userRole } = useAuthState();
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [tab, setTab] = useState<"resources" | "trash">("resources");
+  const [trash, setTrash] = useState<TrashItem[]>([]);
+  const [loadingTrash, setLoadingTrash] = useState(false);
+  const [purgeId, setPurgeId] = useState<string | null>(null);
+  const [purging, setPurging] = useState(false);
+  // Super Admin only: look at one admin's resources / recycle bin ("" = everyone).
+  const [admins, setAdmins] = useState<AdminOption[]>([]);
+  const [owner, setOwner] = useState("");
+
+  const ownerQuery = userRole === "superAdmin" && owner ? `&owner=${owner}` : "";
+
   const fetchResources = async () => {
     try {
-      const res = await fetch("/api/resources?limit=100&admin=true");
+      const res = await fetch(`/api/resources?limit=100&admin=true${ownerQuery}`, { cache: "no-store" });
       const data = await res.json();
       setResources(data.resources || []);
     } catch {
@@ -38,9 +74,78 @@ export default function ResourcesPage() {
     }
   };
 
+  const fetchTrash = async () => {
+    setLoadingTrash(true);
+    try {
+      const res = await fetch(`/api/resources/trash?${ownerQuery.replace(/^&/, "")}`, { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      setTrash(data.items || []);
+    } catch {
+      toast.error("Failed to load the recycle bin");
+    } finally {
+      setLoadingTrash(false);
+    }
+  };
+
+  useEffect(() => {
+    if (userRole !== "superAdmin") return;
+    fetch("/api/users", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((users: Array<{ _id: string; username: string; role: string; isPending?: boolean }>) =>
+        setAdmins(users.filter((u) => u.role === "admin" && !u.isPending).map((u) => ({ _id: u._id, username: u.username })))
+      )
+      .catch(() => {});
+  }, [userRole]);
+
   useEffect(() => {
     fetchResources();
-  }, []);
+    fetchTrash();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner, userRole]);
+
+  const restoreItem = async (id: string) => {
+    try {
+      const res = await fetch(`/api/resources/${id}/restore`, { method: "POST" });
+      if (!res.ok) throw new Error((await res.json()).error || "Failed");
+      toast.success("Resource restored");
+      fetchTrash();
+      fetchResources();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to restore");
+    }
+  };
+
+  const handlePurge = async () => {
+    if (!purgeId) return;
+    setPurging(true);
+    try {
+      const res = await fetch(`/api/resources/${purgeId}/purge`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error || "Failed");
+      toast.success("Deleted permanently");
+      setPurgeId(null);
+      fetchTrash();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete");
+    } finally {
+      setPurging(false);
+    }
+  };
+
+  const claimResource = async (id: string) => {
+    try {
+      const res = await fetch(`/api/resources/${id}/owner`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "claim" }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Failed");
+      toast.success("You now own this resource");
+      fetchResources();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to claim resource");
+    }
+  };
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -53,9 +158,10 @@ export default function ResourcesPage() {
         const err = await res.json();
         throw new Error(err.error);
       }
-      toast.success("Resource deleted");
+      toast.success("Moved to the recycle bin (kept for 30 days)");
       setDeleteId(null);
       fetchResources();
+      fetchTrash();
     } catch (err: unknown) {
       toast.error(
         err instanceof Error ? err.message : "Failed to delete resource"
@@ -71,7 +177,7 @@ export default function ResourcesPage() {
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Resources</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Manage all learning resources
+            {userRole === "superAdmin" ? "Manage all learning resources, or pick one admin to see their resources and recycle bin" : "Manage your learning resources"}
           </p>
         </div>
         <Link href="/admin/resources/new">
@@ -86,7 +192,90 @@ export default function ResourcesPage() {
         </Link>
       </div>
 
-      {loading ? (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex bg-gray-100 rounded-xl p-1 text-sm font-medium">
+          <button
+            onClick={() => setTab("resources")}
+            className={`px-4 py-2 rounded-lg transition-colors ${tab === "resources" ? "bg-white text-text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            Resources
+          </button>
+          <button
+            onClick={() => setTab("trash")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${tab === "trash" ? "bg-white text-text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            <Archive className="w-4 h-4" />
+            Recycle bin
+            {trash.length > 0 && <span className="bg-red-100 text-red-600 text-xs px-1.5 py-0.5 rounded-full">{trash.length}</span>}
+          </button>
+        </div>
+
+        {userRole === "superAdmin" && (
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            Admin
+            <select
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-teal focus:outline-none"
+            >
+              <option value="">All admins</option>
+              {admins.map((a) => (
+                <option key={a._id} value={a._id}>{a.username}</option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+
+      {tab === "trash" && (
+        loadingTrash ? (
+          <TableSkeleton rows={4} />
+        ) : trash.length === 0 ? (
+          <div className="bg-white rounded-2xl p-12 shadow-sm text-center">
+            <Archive className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="font-semibold text-gray-700">The recycle bin is empty</h3>
+            <p className="text-gray-400 text-sm mt-1">Deleted resources stay here for 30 days, then are removed for good.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
+            {trash.map((item) => (
+              <div key={item._id} className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+                <div className="min-w-0">
+                  <p className="font-medium text-text-primary break-words [overflow-wrap:anywhere]">{item.title}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {item.subjectId?.name || "—"} · {item.resourceType} · by {item.authorName}
+                    {item.isOrphaned && userRole === "superAdmin" && item.formerOwnerName ? ` (former owner: ${item.formerOwnerName})` : ""}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Deleted {formatDateTime(item.deletedAt)}{item.deletedByName ? ` by ${item.deletedByName}` : ""} ·{" "}
+                    <span className={item.daysLeft <= 3 ? "text-red-500 font-medium" : "text-amber-600 font-medium"}>
+                      {item.daysLeft} day{item.daysLeft === 1 ? "" : "s"} left
+                    </span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => restoreItem(item._id)}
+                    className="flex items-center gap-1.5 text-sm text-teal hover:bg-teal/5 px-3 py-2 rounded-lg transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Restore
+                  </button>
+                  <button
+                    onClick={() => setPurgeId(item._id)}
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete forever"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      {tab === "resources" && (loading ? (
         <TableSkeleton rows={8} />
       ) : resources.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 shadow-sm text-center">
@@ -142,6 +331,22 @@ export default function ResourcesPage() {
                       <span className="font-medium text-text-primary line-clamp-1">
                         {resource.title}
                       </span>
+                      {!resource.isOrphaned && resource.authorName && (
+                        <span className="mt-0.5 block text-xs text-gray-400">By {resource.authorName}</span>
+                      )}
+                      {resource.isOrphaned && (
+                        <span className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                          <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Unknown Author</span>
+                          {userRole === "superAdmin" && (
+                            <>
+                              <span className="text-gray-400">Former owner: {resource.formerOwnerName || "unknown"}</span>
+                              <button onClick={() => claimResource(resource._id)} className="text-teal hover:underline font-medium">
+                                Claim ownership
+                              </button>
+                            </>
+                          )}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
                       {resource.subjectId?.name || "—"}
@@ -200,14 +405,23 @@ export default function ResourcesPage() {
             </table>
           </div>
         </div>
-      )}
+      ))}
+
+      <ConfirmModal
+        isOpen={!!purgeId}
+        onClose={() => setPurgeId(null)}
+        onConfirm={handlePurge}
+        title="Delete forever"
+        message="Delete this resource permanently, including its files and comments? This cannot be undone."
+        loading={purging}
+      />
 
       <ConfirmModal
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title="Delete Resource"
-        message="Are you sure you want to delete this resource? This will also remove any uploaded files. This action cannot be undone."
+        title="Move to Recycle Bin"
+        message="Move this resource to the recycle bin? It disappears from the site now and is deleted for good after 30 days — you can restore it until then."
         loading={deleting}
       />
     </div>

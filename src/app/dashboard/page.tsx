@@ -8,11 +8,13 @@ import toast from "react-hot-toast";
 import {
   User as UserIcon, Heart, Bookmark, MessageSquare, Edit3, Save, X,
   Camera, Loader2, BookOpen, Star, ChevronRight, ExternalLink,
-  FileText, Play, Award, Activity
+  FileText, Play, Award, Activity, Bell
 } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { ResourceCard } from "@/components/ResourceCard";
+import { NotificationSettings } from "@/components/NotificationSettings";
+import { StudyProgress } from "@/components/mcq/StudyProgress";
 import { useAuthState } from "@/contexts/AuthContext";
 import { formatDistanceToNow, getAvatar } from "@/lib/utils";
 import type { Metadata } from "next";
@@ -54,12 +56,19 @@ const TABS = [
   { id: "favorites", label: "Favorites", icon: Bookmark },
   { id: "liked", label: "Liked", icon: Heart },
   { id: "activity", label: "Activity", icon: Activity },
+  { id: "notifications", label: "Notifications", icon: Bell },
 ];
 
 export default function DashboardPage() {
   const { user: clerkUser, isLoaded } = useUser();
   const { userImage: authImage } = useAuthState();
   const [activeTab, setActiveTab] = useState("profile");
+
+  // Deep link from the notification bell: /dashboard?tab=notifications
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab && TABS.some((t) => t.id === tab)) setActiveTab(tab);
+  }, []);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [favorites, setFavorites] = useState<Resource[]>([]);
@@ -363,6 +372,7 @@ export default function DashboardPage() {
 
       {/* Tab Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        {activeTab === "profile" && <StudyProgress />}
         <AnimatePresence mode="wait">
           {/* Profile Tab */}
           {activeTab === "profile" && (
@@ -423,6 +433,8 @@ export default function DashboardPage() {
           )}
 
           {/* Favorites Tab */}
+          {activeTab === "notifications" && <NotificationSettings />}
+
           {activeTab === "favorites" && (
             <motion.div key="favorites" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               {loadingCollections ? (

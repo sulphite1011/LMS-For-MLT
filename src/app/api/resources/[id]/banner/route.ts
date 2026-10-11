@@ -29,7 +29,7 @@ export async function GET(
     }
 
     await dbConnect();
-    const resource = await Resource.findById(id).select("bannerImageUrl").lean();
+    const resource = await Resource.findOne({ _id: id, deletedAt: null }).select("bannerImageUrl").lean();
     const stored = resource?.bannerImageUrl?.trim();
 
     if (!stored) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { SEMESTERS } from "@/lib/semesters";
 import { useRouter, useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useDropzone } from "react-dropzone";
@@ -31,6 +32,7 @@ export default function EditResourcePage() {
   const [subjectName, setSubjectName] = useState("");
   const [resourceType, setResourceType] = useState<string>("");
   const [description, setDescription] = useState("");
+  const [semester, setSemester] = useState("");
   const [youtubeUrls, setYoutubeUrls] = useState<string[]>([""]);
   const [bannerImageUrl, setBannerImageUrl] = useState("");
   const [fileMode, setFileMode] = useState<"upload" | "external">("upload");
@@ -48,6 +50,7 @@ export default function EditResourcePage() {
         setSubjectName(resData.subjectId?.name || "");
         setResourceType(resData.resourceType || "");
         setDescription(resData.description || "");
+        setSemester(resData.semester ? String(resData.semester) : "");
         setYoutubeUrls(
           resData.youtubeUrls?.length > 0 ? resData.youtubeUrls : [""]
         );
@@ -127,6 +130,7 @@ export default function EditResourcePage() {
       formData.append("subjectName", subjectName.trim());
       formData.append("resourceType", resourceType);
       formData.append("description", description);
+      formData.append("semester", semester);
       formData.append(
         "youtubeUrls",
         JSON.stringify(youtubeUrls.filter(Boolean))
@@ -237,6 +241,22 @@ export default function EditResourcePage() {
                 ))}
               </select>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Semester (optional)
+            </label>
+            <select
+              value={semester}
+              onChange={(e) => setSemester(e.target.value)}
+              className="w-full sm:w-64 px-4 py-2.5 border border-gray-200 rounded-xl focus:border-[#14b8a6] focus:ring-2 focus:ring-[#14b8a6]/20 focus:outline-none text-sm bg-white"
+            >
+              <option value="">All semesters / general</option>
+              {SEMESTERS.map((n) => (
+                <option key={n} value={n}>Semester {n}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Changing this does not send a new notification.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
