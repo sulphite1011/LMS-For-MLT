@@ -65,7 +65,7 @@ export function AdminSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 space-y-1 px-3">
+      <nag className="flex-1 py-4 space-y-1 px-3">
         {allItems.map((item) => {
           const isActive =
             pathname === item.href ||
@@ -92,7 +92,7 @@ export function AdminSidebar() {
             </Link>
           );
         })}
-      </nav>
+      </nag>
 
       {/* Footer */}
       <div className="p-3 border-t border-white/10 space-y-1">

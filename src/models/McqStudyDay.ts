@@ -5,6 +5,7 @@ export interface IMcqStudyDayDoc extends mongoose.Document {
   userId: mongoose.Types.ObjectId;
   day: string; // YYYY-MM-DD
   answered: number;
+  createdAt: Date;
 }
 
 const McqStudyDaySchema = new Schema<IMcqStudyDayDoc>({
