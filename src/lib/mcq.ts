@@ -195,3 +195,63 @@ export const getUnitQuestions = cache(async (unitId: string): Promise<McqQuestio
   const doc = await McqUnit.findById(unitId).select("+questions").lean();
   return plain<McqQuestionView[]>(doc?.questions ?? []);
 });
+
+export interface McqCatalogUnit {
+  id: string;
+  name: string;
+  slug: string;
+  qCount: number;
+}
+export interface McqCatalogSubject {
+  id: string;
+  name: string;
+  slug: string;
+  semester: number;
+  units: McqCatalogUnit[];
+}
+export interface McqCatalogSpecialty {
+  id: string;
+  name: string;
+  slug: string;
+  semesterCount: number;
+  subjects: McqCatalogSubject[];
+}
+
+/**
+ * Everything the MCQ hub needs in one go: specialties → subjects → units that have an MCQ page.
+ * Subjects without any available unit are left out. No HTML or question data is loaded.
+ */
+export const getMcqCatalog = cache(async (): Promise<McqCatalogSpecialty[]> => {
+  await dbConnect();
+  const [specialties, subjects, units] = await Promise.all([
+    McqSpecialty.find({}).select("name slug semesterCount").sort({ createdAt: 1 }).lean(),
+    McqSubject.find({}).select("specialtyId semester name slug").sort({ name: 1 }).limit(2000).lean(),
+    McqUnit.find({ hasPage: true }).select("subjectId name slug questionCount").sort({ createdAt: 1 }).limit(10000).lean(),
+  ]);
+
+  const unitsBySubject = new Map<string, McqCatalogUnit[]>();
+  for (const u of units) {
+    const key = String(u.subjectId);
+    const list = unitsBySubject.get(key) ?? [];
+    list.push({ id: String(u._id), name: u.name, slug: u.slug, qCount: u.questionCount ?? 0 });
+    unitsBySubject.set(key, list);
+  }
+
+  const subjectsBySpecialty = new Map<string, McqCatalogSubject[]>();
+  for (const sub of subjects) {
+    const subjectUnits = unitsBySubject.get(String(sub._id));
+    if (!subjectUnits?.length) continue;
+    const key = String(sub.specialtyId);
+    const list = subjectsBySpecialty.get(key) ?? [];
+    list.push({ id: String(sub._id), name: sub.name, slug: sub.slug, semester: sub.semester, units: subjectUnits });
+    subjectsBySpecialty.set(key, list);
+  }
+
+  return specialties.map((sp) => ({
+    id: String(sp._id),
+    name: sp.name,
+    slug: sp.slug,
+    semesterCount: sp.semesterCount ?? 8,
+    subjects: subjectsBySpecialty.get(String(sp._id)) ?? [],
+  }));
+});

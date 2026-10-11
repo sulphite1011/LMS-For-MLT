@@ -73,27 +73,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ]);
     const subjectUrlById = new Map<string, string>();
     const slugById = new Map(specialties.map((s) => [String(s._id), s.slug] as const));
-    const seen = new Set<string>();
 
-    for (const s of specialties) {
-      mcqRoutes.push({ url: `${BASE_URL}/mcqs/${s.slug}`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 });
-    }
     for (const subject of subjects) {
       const specialtySlug = slugById.get(String(subject.specialtyId));
       if (!specialtySlug) continue;
-      const semesterUrl = `${BASE_URL}/mcqs/${specialtySlug}/${subject.semester}`;
-      if (!seen.has(semesterUrl)) {
-        seen.add(semesterUrl);
-        mcqRoutes.push({ url: semesterUrl, lastModified: new Date(), changeFrequency: "weekly", priority: 0.5 });
-      }
-      const subjectUrl = `${semesterUrl}/${subject.slug}`;
-      subjectUrlById.set(String(subject._id), subjectUrl);
-      mcqRoutes.push({
-        url: subjectUrl,
-        lastModified: subject.updatedAt ? new Date(subject.updatedAt) : new Date(),
-        changeFrequency: "weekly",
-        priority: 0.6,
-      });
+      subjectUrlById.set(String(subject._id), `${BASE_URL}/mcqs/${specialtySlug}/${subject.semester}/${subject.slug}`);
     }
     for (const unit of units) {
       const subjectUrl = subjectUrlById.get(String(unit.subjectId));

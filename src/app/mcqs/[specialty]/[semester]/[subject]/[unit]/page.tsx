@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Clock, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, ExternalLink } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { McqHero, McqFooter } from "@/components/mcq/McqHero";
 import { ShareButton } from "@/components/ShareButton";
 import { McqPlayer } from "@/components/mcq/McqPlayer";
 import { McqMarkComplete } from "@/components/mcq/McqMarkComplete";
-import { getSpecialtyBySlug, getSubjectBySlug, getUnitBySlug, getUnitQuestions, MCQ_FREE_PREVIEW, ordinal, parseSemester } from "@/lib/mcq";
+import { getSpecialtyBySlug, getSubjectBySlug, getUnitBySlug, getUnitsForSubject, getUnitQuestions, MCQ_FREE_PREVIEW, ordinal, parseSemester } from "@/lib/mcq";
 
 export const revalidate = 60;
 
@@ -43,6 +43,10 @@ export default async function UnitMcqPage({ params }: Props) {
 
   const base = `/mcqs/${specialty.slug}`;
   const subjectPath = `${base}/${semester}/${subject.slug}`;
+  const hubHref = `/mcqs?s=${encodeURIComponent(specialty.slug)}&sem=${semester}&sub=${encodeURIComponent(subject.slug)}`;
+  const siblings = await getUnitsForSubject(subject._id).catch(() => []);
+  const idx = siblings.findIndex((u) => String(u._id) === String(unit._id));
+  const next = idx >= 0 ? siblings.slice(idx + 1).find((u) => u.hasPage) : undefined;
   const path = `${subjectPath}/${unit.slug}`;
   const version = unit.updatedAt ? new Date(unit.updatedAt).getTime() : 0;
   const questions = unit.questionCount ? await getUnitQuestions(unit._id) : [];
@@ -52,28 +56,25 @@ export default async function UnitMcqPage({ params }: Props) {
     <div className="min-h-screen">
       <Navbar />
       <McqHero
+        compact
         title={unit.name}
-        subtitle={unit.description || `${subject.name} · ${specialty.name} · ${ordinal(semester)} Semester`}
         crumbs={[
-          { label: "Home", href: "/" },
           { label: "MCQs", href: "/mcqs" },
-          { label: specialty.name, href: base },
-          { label: `${ordinal(semester)} Semester`, href: `${base}/${semester}` },
-          { label: subject.name, href: subjectPath },
+          { label: subject.name, href: hubHref },
           { label: unit.name },
         ]}
         sharePath={path}
         shareText={`${unit.name} MCQs — ${subject.name}, ${specialty.name} ${ordinal(semester)} semester`}
       />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <Link
-            href={subjectPath}
+            href={hubHref}
             className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-teal transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to {subject.name} units
+            All {subject.name} units
           </Link>
 
           {unit.hasPage && (
@@ -100,7 +101,7 @@ export default async function UnitMcqPage({ params }: Props) {
             unitName={unit.name}
             questions={questions.slice(0, MCQ_FREE_PREVIEW)}
             totalCount={questions.length}
-            backHref={subjectPath}
+            backHref={hubHref}
           />
         ) : unit.hasPage ? (
           <div className="space-y-4">
@@ -126,6 +127,19 @@ export default async function UnitMcqPage({ params }: Props) {
             <h3 className="font-semibold text-gray-700">MCQs coming soon</h3>
             <p className="text-gray-400 text-sm mt-1">The MCQs for this unit haven&apos;t been uploaded yet.</p>
           </div>
+        )}
+
+        {next && (
+          <Link
+            href={`${subjectPath}/${next.slug}`}
+            className="mt-6 flex items-center justify-between gap-3 rounded-2xl bg-white border border-gray-200 hover:border-teal/40 hover:shadow-sm px-5 py-4 transition-all"
+          >
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-teal">Up next</span>
+              <span className="block font-semibold text-gray-800 truncate">{next.name}</span>
+            </span>
+            <ArrowRight className="w-5 h-5 text-teal shrink-0" />
+          </Link>
         )}
       </main>
       <McqFooter />

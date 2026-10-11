@@ -15,10 +15,12 @@ interface McqHeroProps {
   /** Site-relative path of this page (used by the Share button). */
   sharePath: string;
   shareText?: string;
+  /** Short hero for working pages (hub, unit): less padding, no badge or subtitle. */
+  compact?: boolean;
 }
 
 /** Navy hero used by every page of the MCQs section — same look as the homepage hero. */
-export function McqHero({ title, subtitle, crumbs, sharePath, shareText }: McqHeroProps) {
+export function McqHero({ title, subtitle, crumbs, sharePath, shareText, compact }: McqHeroProps) {
   return (
     <section className="relative bg-linear-to-br from-navy via-navy-light to-navy overflow-hidden">
       <div className="absolute inset-0 overflow-hidden">
@@ -26,7 +28,7 @@ export function McqHero({ title, subtitle, crumbs, sharePath, shareText }: McqHe
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-teal/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-20">
+      <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 ${compact ? "py-6 md:py-8" : "py-12 md:py-20"}`}>
         <div className="text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center justify-center gap-1 text-xs sm:text-sm text-gray-400 mb-6">
             {crumbs.map((crumb, i) => (
@@ -43,14 +45,16 @@ export function McqHero({ title, subtitle, crumbs, sharePath, shareText }: McqHe
             ))}
           </nav>
 
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-4 py-1.5 mb-5">
-            <ListChecks className="w-4 h-4 text-teal" />
-            <span className="text-sm text-gray-300">MCQ Practice</span>
-          </div>
+          {!compact && (
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-4 py-1.5 mb-5">
+              <ListChecks className="w-4 h-4 text-teal" />
+              <span className="text-sm text-gray-300">MCQ Practice</span>
+            </div>
+          )}
 
-          <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-4 tracking-tight">{title}</h1>
+          <h1 className={`${compact ? "text-2xl md:text-3xl mb-3" : "text-3xl md:text-5xl mb-4"} font-extrabold text-white tracking-tight`}>{title}</h1>
 
-          {subtitle && (
+          {subtitle && !compact && (
             <p className="text-base md:text-lg text-gray-400 max-w-2xl mx-auto mb-8">{subtitle}</p>
           )}
 
