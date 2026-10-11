@@ -44,12 +44,15 @@ export default async function UnitMcqPage({ params }: Props) {
   const base = `/mcqs/${specialty.slug}`;
   const subjectPath = `${base}/${semester}/${subject.slug}`;
   const hubHref = `/mcqs?s=${encodeURIComponent(specialty.slug)}&sem=${semester}&sub=${encodeURIComponent(subject.slug)}`;
-  const siblings = await getUnitsForSubject(subject._id).catch(() => []);
-  const idx = siblings.findIndex((u) => String(u._id) === String(unit._id));
-  const next = idx >= 0 ? siblings.slice(idx + 1).find((u) => u.hasPage) : undefined;
   const path = `${subjectPath}/${unit.slug}`;
   const version = unit.updatedAt ? new Date(unit.updatedAt).getTime() : 0;
-  const questions = unit.questionCount ? await getUnitQuestions(unit._id) : [];
+  // fetched in parallel so the page does not wait on them one after another
+  const [questions, siblings] = await Promise.all([
+    unit.questionCount ? getUnitQuestions(unit._id) : Promise.resolve([]),
+    getUnitsForSubject(subject._id).catch(() => []),
+  ]);
+  const idx = siblings.findIndex((u) => String(u._id) === String(unit._id));
+  const next = idx >= 0 ? siblings.slice(idx + 1).find((u) => u.hasPage) : undefined;
   const frameSrc = `/api/mcq/units/${unit._id}/html?v=${version}`;
 
   return (

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
-import { CheckCircle2, ChevronRight, PlayCircle, Search, X } from "lucide-react";
+import { CheckCircle2, ChevronRight, Loader2, PlayCircle, Search, X } from "lucide-react";
 import type { McqCatalogSpecialty, McqCatalogSubject, McqCatalogUnit } from "@/lib/mcq";
 
 interface UnitStatus {
@@ -42,11 +42,12 @@ export function McqBrowser({ catalog, initial }: Props) {
   const { isLoaded, isSignedIn } = useAuth();
   const [spSlug, setSpSlug] = useState<string>("");
   const [sem, setSem] = useState<number>(0);
+  const [subSlug, setSubSlug] = useState<string>("");
+  const [opening, setOpening] = useState<string>("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Record<string, UnitStatus>>({});
   const [resume, setResume] = useState<ResumeItem[]>([]);
   const readyRef = useRef(false);
-  const scrolledRef = useRef(false);
 
   const specialty = useMemo(() => catalog.find((c) => c.slug === spSlug) ?? catalog[0], [catalog, spSlug]);
 
@@ -85,6 +86,7 @@ export function McqBrowser({ catalog, initial }: Props) {
 
     setSpSlug(sp.slug);
     setSem(pick);
+    setSubSlug(initial?.sub || params.get("sub") || "");
     readyRef.current = true;
   }, [catalog, initial]);
 
@@ -99,18 +101,17 @@ export function McqBrowser({ catalog, initial }: Props) {
     const url = new URL(window.location.href);
     url.searchParams.set("s", spSlug);
     url.searchParams.set("sem", String(sem));
-    url.searchParams.delete("sub");
+    if (subSlug) url.searchParams.set("sub", subSlug);
+    else url.searchParams.delete("sub");
     window.history.replaceState(null, "", url.toString());
-  }, [spSlug, sem]);
+  }, [spSlug, sem, subSlug]);
 
-  // ---- scroll to a subject coming from an old link -------------------------
+  // clear the "opening…" state if the page is restored from the back/forward cache
   useEffect(() => {
-    if (scrolledRef.current || !sem) return;
-    const sub = initial?.sub || new URLSearchParams(window.location.search).get("sub");
-    if (!sub) return;
-    scrolledRef.current = true;
-    requestAnimationFrame(() => document.getElementById(`subject-${sub}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, [sem, initial]);
+    const clear = () => setOpening("");
+    window.addEventListener("pageshow", clear);
+    return () => window.removeEventListener("pageshow", clear);
+  }, []);
 
   // ---- signed-in extras ----------------------------------------------------
   const loadProgress = useCallback(async () => {
@@ -156,16 +157,29 @@ export function McqBrowser({ catalog, initial }: Props) {
   }
 
   const subjectsHere = bySemester.get(sem) ?? [];
+  const activeSub = subjectsHere.find((s) => s.slug === subSlug) ?? subjectsHere[0];
 
-  const UnitRow = ({ sp, sub, u, showPath }: { sp: McqCatalogSpecialty; sub: McqCatalogSubject; u: McqCatalogUnit; showPath?: boolean }) => {
+  /** instant feedback: mark the tapped unit as "opening" (ignores ctrl/cmd/middle clicks) */
+  const onOpen = (id: string) => (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    setOpening(id);
+  };
+
+  const UnitRow = ({ sp, sub, u }: { sp: McqCatalogSpecialty; sub: McqCatalogSubject; u: McqCatalogUnit }) => {
     const st = status[u.id];
+    const busy = opening === u.id;
     return (
       <Link
         href={unitHref(sp, sub, u)}
-        className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 hover:border-teal/40 hover:bg-teal/5 transition-all"
+        onClick={onOpen(u.id)}
+        className={`group flex items-center gap-3 rounded-xl border bg-white px-4 py-3 transition-all active:scale-[0.99] ${
+          busy ? "border-teal bg-teal/5" : "border-gray-100 hover:border-teal/40 hover:bg-teal/5"
+        }`}
       >
         <span className="shrink-0">
-          {st?.completed ? (
+          {busy ? (
+            <Loader2 className="w-5 h-5 text-teal animate-spin" />
+          ) : st?.completed ? (
             <CheckCircle2 className="w-5 h-5 text-green-500" />
           ) : st?.inProgress ? (
             <PlayCircle className="w-5 h-5 text-teal" />
@@ -175,16 +189,55 @@ export function McqBrowser({ catalog, initial }: Props) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-medium text-text-primary [overflow-wrap:anywhere]">{u.name}</span>
-          {showPath && (
-            <span className="block text-xs text-gray-400 truncate">
-              {sp.name} · Sem {sub.semester} · {sub.name}
-            </span>
-          )}
+          <span className="block text-xs text-gray-400 truncate">
+            {sp.name} · Sem {sub.semester} · {sub.name}
+          </span>
         </span>
-        <span className="shrink-0 text-xs text-gray-400">
-          {st?.attempts ? `Best ${st.bestScore}%` : st?.inProgress ? "In progress" : u.qCount ? `${u.qCount} Qs` : ""}
-        </span>
+        <span className="shrink-0 text-xs text-gray-400">{busy ? "Opening…" : st?.attempts ? `Best ${st.bestScore}%` : u.qCount ? `${u.qCount} Qs` : ""}</span>
         <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-teal shrink-0" />
+      </Link>
+    );
+  };
+
+  const UnitTile = ({ sp, sub, u, n }: { sp: McqCatalogSpecialty; sub: McqCatalogSubject; u: McqCatalogUnit; n: number }) => {
+    const st = status[u.id];
+    const busy = opening === u.id;
+    const state = st?.completed ? "done" : st?.inProgress ? "progress" : "new";
+    return (
+      <Link
+        href={unitHref(sp, sub, u)}
+        onClick={onOpen(u.id)}
+        className={`group relative flex flex-col justify-between gap-3 rounded-2xl border p-4 min-h-[112px] transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98] ${
+          busy
+            ? "border-teal bg-teal/5 shadow-md"
+            : state === "done"
+              ? "border-green-200 bg-green-50/60 hover:border-green-300"
+              : state === "progress"
+                ? "border-teal/40 bg-teal/5 hover:border-teal"
+                : "border-gray-200 bg-white hover:border-teal/50"
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className={`shrink-0 grid place-items-center w-8 h-8 rounded-lg text-sm font-bold ${
+              state === "done" ? "bg-green-500 text-white" : "bg-navy text-white group-hover:bg-teal"
+            } transition-colors`}
+          >
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : state === "done" ? <CheckCircle2 className="w-4 h-4" /> : n}
+          </span>
+          <span className="min-w-0 text-sm font-semibold leading-snug text-text-primary line-clamp-3 [overflow-wrap:anywhere]">{u.name}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-gray-400">{u.qCount ? `${u.qCount} questions` : "MCQs"}</span>
+          <span
+            className={`inline-flex items-center gap-1 font-semibold ${
+              busy ? "text-teal" : state === "done" ? "text-green-600" : state === "progress" ? "text-teal" : "text-teal opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+            } transition-opacity`}
+          >
+            {busy ? "Opening…" : state === "done" ? `Best ${st?.bestScore ?? 0}%` : state === "progress" ? "Resume" : "Start"}
+            {!busy && <ChevronRight className="w-3.5 h-3.5" />}
+          </span>
+        </div>
       </Link>
     );
   };
@@ -215,7 +268,7 @@ export function McqBrowser({ catalog, initial }: Props) {
             {results.length} result{results.length === 1 ? "" : "s"}
           </p>
           {results.map(({ sp, sub, u }) => (
-            <UnitRow key={u.id} sp={sp} sub={sub} u={u} showPath />
+            <UnitRow key={u.id} sp={sp} sub={sub} u={u} />
           ))}
           {results.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">Nothing found. Try a shorter word.</p>}
         </section>
@@ -229,10 +282,12 @@ export function McqBrowser({ catalog, initial }: Props) {
                   <Link
                     key={r.unitId}
                     href={r.href}
+                    onClick={onOpen(r.unitId)}
                     className="shrink-0 w-64 rounded-xl border border-teal/30 bg-teal/5 px-4 py-3 hover:border-teal transition-all"
                   >
                     <span className="flex items-center gap-2 text-xs font-medium text-teal">
-                      <PlayCircle className="w-4 h-4" /> {r.answered}/{r.sessionTotal} answered
+                      {opening === r.unitId ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}{" "}
+                      {opening === r.unitId ? "Opening…" : `${r.answered}/${r.sessionTotal} answered`}
                     </span>
                     <span className="block text-sm font-medium text-text-primary mt-1 truncate">{r.unitName}</span>
                     <span className="block text-xs text-gray-500 truncate">{r.subjectName}</span>
@@ -256,6 +311,7 @@ export function McqBrowser({ catalog, initial }: Props) {
                     setSpSlug(c.slug);
                     const sems = [...new Set(c.subjects.map((x) => x.semester))].sort((a, b) => a - b);
                     setSem(sems.includes(sem) ? sem : sems[0] ?? 1);
+                    setSubSlug("");
                   }}
                   className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all ${
                     active ? "bg-navy text-white border-navy shadow-sm" : "bg-white text-gray-600 border-gray-200 hover:border-teal/40 hover:text-teal"
@@ -279,7 +335,10 @@ export function McqBrowser({ catalog, initial }: Props) {
                   role="tab"
                   aria-selected={active}
                   disabled={count === 0}
-                  onClick={() => setSem(n)}
+                  onClick={() => {
+                    setSem(n);
+                    setSubSlug("");
+                  }}
                   className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition-all disabled:opacity-40 disabled:pointer-events-none ${
                     active ? "bg-teal text-white border-teal" : "bg-white text-gray-600 border-gray-200 hover:border-teal/40 hover:text-teal"
                   }`}
@@ -291,26 +350,70 @@ export function McqBrowser({ catalog, initial }: Props) {
             })}
           </div>
 
-          {/* subjects + units, all visible */}
-          {subjectsHere.length === 0 ? (
+          {/* subject picker + units of the chosen subject only */}
+          {!activeSub ? (
             <p className="text-center text-gray-400 py-12 text-sm">No MCQs in this semester yet.</p>
           ) : (
-            <div className="grid gap-5 md:grid-cols-2">
-              {subjectsHere.map((sub) => (
-                <section key={sub.id} id={`subject-${sub.slug}`} className="bg-white rounded-2xl shadow-sm p-4 sm:p-5 scroll-mt-24">
-                  <div className="flex items-baseline justify-between gap-3 mb-3">
-                    <h2 className="font-semibold text-text-primary [overflow-wrap:anywhere]">{sub.name}</h2>
-                    <span className="text-xs text-gray-400 shrink-0">
-                      {sub.units.length} unit{sub.units.length === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {sub.units.map((u) => (
-                      <UnitRow key={u.id} sp={specialty} sub={sub} u={u} />
-                    ))}
-                  </div>
-                </section>
-              ))}
+            <div className="space-y-4">
+              <div role="tablist" aria-label="Subject" className="flex flex-wrap gap-2">
+                {subjectsHere.map((sub) => {
+                  const active = sub.id === activeSub.id;
+                  const done = sub.units.filter((u) => status[u.id]?.completed).length;
+                  return (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setSubSlug(sub.slug)}
+                      className={`group inline-flex items-center gap-2 max-w-full rounded-2xl border px-4 py-2.5 text-sm font-semibold text-left transition-all ${
+                        active
+                          ? "bg-gradient-to-br from-navy to-navy-light text-white border-navy shadow-md"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-teal/50 hover:text-teal"
+                      }`}
+                    >
+                      <span className="truncate">{sub.name}</span>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                          active ? "bg-white/15 text-white" : "bg-gray-100 text-gray-500 group-hover:bg-teal/10 group-hover:text-teal"
+                        }`}
+                      >
+                        {done > 0 ? `${done}/${sub.units.length}` : sub.units.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <section key={activeSub.id} aria-label={`${activeSub.name} units`} className="mcq-fade rounded-3xl bg-white shadow-sm border border-gray-100 p-4 sm:p-6">
+                {(() => {
+                  const done = activeSub.units.filter((u) => status[u.id]?.completed).length;
+                  const pct = activeSub.units.length ? Math.round((done / activeSub.units.length) * 100) : 0;
+                  return (
+                    <div className="flex items-center justify-between gap-4 mb-4">
+                      <h2 className="text-lg font-bold text-text-primary [overflow-wrap:anywhere]">{activeSub.name}</h2>
+                      <div className="shrink-0 flex items-center gap-3 text-xs text-gray-500">
+                        <span>
+                          {activeSub.units.length} unit{activeSub.units.length === 1 ? "" : "s"}
+                        </span>
+                        {isSignedIn && (
+                          <span className="hidden sm:flex items-center gap-2">
+                            <span className="w-24 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                              <span className="block h-full rounded-full bg-teal transition-all" style={{ width: `${pct}%` }} />
+                            </span>
+                            {pct}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {activeSub.units.map((u, i) => (
+                    <UnitTile key={u.id} sp={specialty} sub={activeSub} u={u} n={i + 1} />
+                  ))}
+                </div>
+              </section>
             </div>
           )}
         </>

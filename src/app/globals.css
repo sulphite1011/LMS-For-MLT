@@ -251,3 +251,16 @@ html.theme-transition *::after {
   transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease !important;
 }
 html.dark { --toast-bg: #111c2e; --toast-fg: #e5edf8; --toast-border: #2b3a55; }
+
+/* MCQ hub: gentle entrance when switching subject */
+@keyframes mcq-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.mcq-fade { animation: mcq-fade-in 0.25s ease-out; }
+@media (prefers-reduced-motion: reduce) { .mcq-fade { animation: none; } }
+
+@keyframes mcq-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
