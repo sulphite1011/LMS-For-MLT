@@ -34,7 +34,10 @@ type Phase = "setup" | "quiz" | "result" | "review";
 interface Props {
   unitId: string;
   unitName: string;
+  /** The free preview (first 10 questions). Signed-in users load the full set from the API. */
   questions: PlayerQuestion[];
+  /** Number of questions in the whole unit. */
+  totalCount: number;
   backHref: string;
 }
 
@@ -42,9 +45,6 @@ const LETTERS = "ABCDEFGH";
 const TEST_SIZES = [3, 5, 10, 15, 20, 25, 30, 40, 50];
 /** Standard: 1.5 minutes per MCQ. */
 const SECONDS_PER_QUESTION = 90;
-/** Visitors can answer this many MCQs (in total) before being asked to create a free account. */
-const FREE_LIMIT = 10;
-const FREE_KEY = "mcq-free-answers";
 
 function allIndexes(n: number): number[] {
   return Array.from({ length: n }, (_, i) => i);
@@ -64,26 +64,13 @@ function formatTime(total: number): string {
   return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 }
 
-function readFree(): number {
-  try {
-    return Math.max(0, parseInt(window.localStorage.getItem(FREE_KEY) || "0", 10) || 0);
-  } catch {
-    return 0;
-  }
-}
-
-function writeFree(n: number) {
-  try {
-    window.localStorage.setItem(FREE_KEY, String(n));
-  } catch {
-    /* storage may be unavailable */
-  }
-}
-
-export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
+export function McqPlayer({ unitId, unitName, questions: preview, totalCount, backHref }: Props) {
   const { isSignedIn, isLoaded } = useAuth();
   const pathname = usePathname();
-  const total = questions.length;
+  // Visitors only ever receive the free preview; signed-in users replace it with the full set.
+  const [bank, setBank] = useState<PlayerQuestion[]>(preview);
+  const questions = bank;
+  const total = bank.length;
 
   const testOptions = useMemo(() => {
     const values = TEST_SIZES.filter((n) => n < total);
@@ -101,7 +88,6 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
   const [progress, setProgress] = useState<SavedProgress | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [missedNow, setMissedNow] = useState<number[]>([]);
-  const [freeUsed, setFreeUsed] = useState(0);
   const [gate, setGate] = useState(false);
 
   const stateRef = useRef({ mode, order, answers, index, elapsed });
@@ -109,15 +95,27 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const visitor = isLoaded && !isSignedIn;
+  /** A visitor sees only the free preview; the rest of the unit needs an account. */
+  const locked = visitor && totalCount > total;
 
   // ---- saved progress / free-answer counter --------------------------------
   useEffect(() => {
     if (!isLoaded) return;
-    if (!isSignedIn) {
-      setFreeUsed(readFree());
-      return;
-    }
+    if (!isSignedIn) return;
     let cancelled = false;
+    fetch(`/api/mcq/units/${unitId}/questions`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !Array.isArray(d?.questions) || d.questions.length < preview.length) return;
+        setBank(d.questions);
+        // Nothing answered yet: start practice over the full set.
+        const st = stateRef.current;
+        if (st.mode === "practice" && st.answers.every((a) => a < 0)) {
+          setOrder(allIndexes(d.questions.length));
+          setAnswers(Array(d.questions.length).fill(-1));
+        }
+      })
+      .catch(() => {});
     fetch(`/api/mcq/progress?unitId=${unitId}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -127,7 +125,7 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [unitId, isLoaded, isSignedIn]);
+  }, [unitId, isLoaded, isSignedIn, preview.length]);
 
   const put = useCallback(
     async (body: Record<string, unknown>) => {
@@ -191,8 +189,9 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
     setMissedNow(missed);
     setFinishing(false);
     setPhase("result");
+    if (locked) setGate(true);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [isSignedIn, put, questions]);
+  }, [isSignedIn, put, questions, locked]);
 
   useEffect(() => {
     if (mode === "test" && phase === "quiz" && limit > 0 && elapsed >= limit && !finishing) {
@@ -247,12 +246,6 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
   const choose = (opt: number) => {
     if (phase !== "quiz") return;
     if (mode === "practice" && answers[index] >= 0) return; // locked after answering
-    const isNew = answers[index] < 0;
-
-    if (visitor && isNew && freeUsed >= FREE_LIMIT) {
-      setGate(true);
-      return;
-    }
 
     setAnswers((prev) => {
       const next = [...prev];
@@ -262,12 +255,6 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
     });
     scheduleSave();
 
-    if (visitor && isNew) {
-      const n = freeUsed + 1;
-      setFreeUsed(n);
-      writeFree(n);
-      if (n >= FREE_LIMIT) setGate(true);
-    }
   };
 
   const go = (i: number) => {
@@ -390,7 +377,18 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
             </button>
           )}
         </div>
-        {visitor && <p className="notice">Create a free account to save results, keep a streak and use “retry missed” later.</p>}
+        {locked && (
+          <div className="resume-card" style={{ marginTop: 18, textAlign: "left" }}>
+            <div>
+              <strong>Unlock all {totalCount} MCQs</strong>
+              <span>Create a free account to continue, save results and track your progress.</span>
+            </div>
+            <Link className="btn btn-primary" href={`/sign-up${authQuery}`}>
+              Create free account
+            </Link>
+          </div>
+        )}
+        {visitor && !locked && <p className="notice">Create a free account to save results, keep a streak and use “retry missed” later.</p>}
       </div>
     );
   } else if (phase === "review") {
@@ -555,7 +553,7 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
           </button>
         </div>
         <div className="chips">
-          <span className="chip">{total} MCQs available</span>
+          <span className="chip">{locked ? `${total} of ${totalCount} MCQs · free preview` : `${isSignedIn ? totalCount : total} MCQs available`}</span>
           <span className="chip">{modeChip}</span>
           <span className="chip">{timerChip}</span>
           {progress?.completed && <span className="chip done">✓ Completed</span>}
@@ -686,7 +684,13 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
             ) : (
               <div className="progress-kpi">
                 <span>
-                  Free answers: <strong>{Math.min(freeUsed, FREE_LIMIT)} / {FREE_LIMIT}</strong>
+                  {locked ? (
+                    <>
+                      Free preview: <strong>{total} of {totalCount} MCQs</strong>
+                    </>
+                  ) : (
+                    "Sign in to save progress and track your record."
+                  )}
                 </span>
                 <Link className="btn btn-primary btn-block" href={`/sign-up${authQuery}`}>
                   Create free account
@@ -717,10 +721,10 @@ export function McqPlayer({ unitId, unitName, questions, backHref }: Props) {
         <div className="gate-backdrop" role="dialog" aria-modal="true" aria-label="Create a free account">
           <div className="gate">
             <div style={{ fontSize: 34 }}>🎉</div>
-            <h3>Nice work — 10 MCQs solved!</h3>
-            <p>Create a free account to keep going. It only takes a few seconds.</p>
+            <h3>Nice work — you finished the free {total} MCQs!</h3>
+            <p>Create a free account to unlock all {totalCount} MCQs. It only takes a few seconds.</p>
             <ul>
-              <li>Unlock all MCQs</li>
+              <li>Unlock every MCQ in this unit</li>
               <li>Save your progress and resume anytime</li>
               <li>Track your record, streak and completed units in your profile</li>
             </ul>

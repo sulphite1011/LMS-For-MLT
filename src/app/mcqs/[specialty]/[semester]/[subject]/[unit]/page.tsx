@@ -7,7 +7,7 @@ import { McqHero, McqFooter } from "@/components/mcq/McqHero";
 import { ShareButton } from "@/components/ShareButton";
 import { McqPlayer } from "@/components/mcq/McqPlayer";
 import { McqMarkComplete } from "@/components/mcq/McqMarkComplete";
-import { getSpecialtyBySlug, getSubjectBySlug, getUnitBySlug, getUnitQuestions, ordinal, parseSemester } from "@/lib/mcq";
+import { getSpecialtyBySlug, getSubjectBySlug, getUnitBySlug, getUnitQuestions, MCQ_FREE_PREVIEW, ordinal, parseSemester } from "@/lib/mcq";
 
 export const revalidate = 60;
 
@@ -95,7 +95,13 @@ export default async function UnitMcqPage({ params }: Props) {
         </div>
 
         {questions.length > 0 ? (
-          <McqPlayer unitId={unit._id} unitName={unit.name} questions={questions} backHref={subjectPath} />
+          <McqPlayer
+            unitId={unit._id}
+            unitName={unit.name}
+            questions={questions.slice(0, MCQ_FREE_PREVIEW)}
+            totalCount={questions.length}
+            backHref={subjectPath}
+          />
         ) : unit.hasPage ? (
           <div className="space-y-4">
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">

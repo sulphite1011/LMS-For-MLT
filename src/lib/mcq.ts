@@ -9,6 +9,9 @@ import McqUnit from "@/models/McqUnit";
 /** Largest MCQ HTML file accepted (bytes). Kept under typical serverless request-body limits. */
 export const MCQ_HTML_MAX_BYTES = 4_000_000;
 
+/** Questions of a unit that visitors (not signed in) can practise without an account. */
+export const MCQ_FREE_PREVIEW = 10;
+
 export const BASE_URL = "https://lms-for-mlt.vercel.app";
 
 export function slugify(input: string): string {
