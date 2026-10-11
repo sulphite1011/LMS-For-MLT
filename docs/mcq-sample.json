@@ -1,0 +1,10 @@
+{
+  "questions": [
+    {
+      "q": "Which of the following is NOT one of the five major components of the haemostatic system?",
+      "options": ["Platelets", "Erythrocytes", "Coagulation inhibitors", "Fibrinolysis"],
+      "answer": 1,
+      "explanation": "The five components are blood vessels, platelets, coagulation factors, inhibitors and fibrinolysis. Erythrocytes are not one of them."
+    }
+  ]
+}

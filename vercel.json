@@ -1,4 +1,5 @@
 {
+  "crons": [{ "path": "/api/cron/purge-recycle-bin", "schedule": "0 3 * * *" }],
   "headers": [
     {
       "source": "/(.*)",

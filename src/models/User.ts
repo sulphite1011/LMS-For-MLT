@@ -14,6 +14,11 @@ export interface IUserDoc extends mongoose.Document {
   isPending?: boolean;
   favoriteResources: mongoose.Types.ObjectId[];
   likedResources: mongoose.Types.ObjectId[];
+  // Notifications: the student's own semester, extra semesters they follow, on/off switch, read marker.
+  currentSemester?: number | null;
+  notifySemesters?: number[];
+  notificationsEnabled?: boolean;
+  notificationsSeenAt?: Date;
   createdAt: Date;
   createdBy?: mongoose.Types.ObjectId;
 }
@@ -32,6 +37,10 @@ const UserSchema = new Schema<IUserDoc>({
   isPending: { type: Boolean, default: false },
   favoriteResources: [{ type: Schema.Types.ObjectId, ref: "Resource" }],
   likedResources: [{ type: Schema.Types.ObjectId, ref: "Resource" }],
+  currentSemester: { type: Number, min: 1, max: 8, default: null },
+  notifySemesters: [{ type: Number, min: 1, max: 8 }],
+  notificationsEnabled: { type: Boolean, default: true },
+  notificationsSeenAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: Schema.Types.ObjectId, ref: "User" },
 });

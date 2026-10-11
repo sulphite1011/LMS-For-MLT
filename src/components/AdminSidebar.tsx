@@ -10,6 +10,8 @@ import {
   BookOpen,
   FileText,
   Users,
+  Bell,
+  ListChecks,
   ChevronLeft,
   ChevronRight,
   Home,
@@ -18,14 +20,17 @@ import {
   X,
 } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/subjects", label: "Subjects", icon: BookOpen },
   { href: "/admin/resources", label: "Resources", icon: FileText },
+  { href: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
 
 const superAdminItems = [
+  { href: "/admin/mcqs", label: "MCQs", icon: ListChecks },
   { href: "/admin/users", label: "Users", icon: Users },
 ];
 
@@ -98,6 +103,10 @@ export function AdminSidebar() {
           <Home className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span>View Site</span>}
         </Link>
+        <ThemeToggle
+          showLabel={!collapsed}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all w-full"
+        />
         <button
           onClick={() => signOut()}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-red-400 hover:bg-red-500/5 transition-all w-full"
